@@ -29,6 +29,11 @@ public class TftpServer {
 		this.sock = null;
     }
 
+    //need to check, because implemented in the server
+    protected void execute(BlockingConnectionHandler handler) {
+        new Thread(handler).start();
+    }
+
     public void serve() {
 
         try (ServerSocket serverSock = new ServerSocket(port)) {
@@ -39,7 +44,7 @@ public class TftpServer {
             while (!Thread.currentThread().isInterrupted()) {
 
                 Socket clientSock = serverSock.accept();
-
+                
                 BlockingConnectionHandler handler = new BlockingConnectionHandler(
                         clientSock,
                         encdecFactory.get(),

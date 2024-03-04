@@ -25,10 +25,12 @@ public class ConnectionsImpl<T> implements Connections<T> {
         return true;
     }
 
-    //the protocol sends to here
+    //create a packet and send it to the client/// the data or error
     public boolean send(int connectionId, T msg)
     {
-        //need to do
+        //create the packet according to the msg recived
+        //data or error
+        //send the packet using the send method of the connection handler
     }
 
     public void disconnect(int connectionId){
