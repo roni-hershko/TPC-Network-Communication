@@ -21,16 +21,15 @@ public class ConnectionsImpl<T> implements Connections<T> {
     public boolean connect(int connectionId, ConnectionHandler<T> handler){
         if(connectionsMap.containsKey(connectionId))
             return false;
-        connectionsMap.put(connectionId, handler);
-        return true;
+        else{
+            connectionsMap.put(connectionId, handler);
+            return true;
+        }
     }
 
-    //create a packet and send it to the client/// the data or error
-    public boolean send(int connectionId, T msg)
-    {
-        //create the packet according to the msg recived
-        //data or error
-        //send the packet using the send method of the connection handler
+    public boolean send(int connectionId, T msg){
+        connectionsMap.get(connectionId).send(msg);
+        return true;
     }
 
     public void disconnect(int connectionId){

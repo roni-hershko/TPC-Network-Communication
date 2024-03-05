@@ -22,13 +22,17 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private boolean shouldTerminate = false;
     int connectionId =0;
-    Connections<byte[]> connections;
-    private Map<Integer, ConnectionHandler<byte[]>> connectionsMap;
+    Connections<byte[]> connections; //check impl and wtf
+    //private Map<Integer, ConnectionHandler<byte[]>> connectionsMap;
     boolean waitingForFile = false;
     String fileNameString;
     private final int packetSize = 512;
+    Map<String, File> fileMap;
 
 
+    public TftpProtocol(Map<String, File> fileMapfromServer){
+        this.fileMap = fileMap;
+    }
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
@@ -41,59 +45,52 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     //byte to short and opposite
     @Override
     public void process(byte[] message) {
-        //DISC
-        if(message.length == 2)
-            shouldTerminate =true;
-
-        if(message[0] == 1)
+        short message0 = (short)(message[0] & 0xff);
+        if(message0 == 1)
         {
             //RRQ
             oneRRQ(message);
         }
-        else if(message[0] == 2)
+        else if(message0 == 2)
         {
             //WRQ
             twoWRQ(message);
         }
-        else if(message[0] == 3)
+        else if(message0 == 3)
         {
             //DATA
-            threeData( message);
+            threeDataRecive( message);
         }
-        else if(message[0] == 4)
+        else if(message0 == 4)
         {
             //ACK
-            //send next block
+            fourACKRecive(message);        
         }
-        else if(message[0] == 5)
+        else if(message0 == 5)
         {
             //ERROR
-            //print error
+            fiveERRORRecive(message);
         }
-        else if(message[0] == 6)
+        else if(message0 == 6)
         {
-            //ERROR
-            //print error
+            sixDIRQ(message);
         }
-        else if(message[0] == 7)
+        else if(message0 == 7)
         {
             sevenLOGRQ(message);
         }
-        else if(message[0] == 8)
+        else if(message0 == 8)
         {
-            //ERROR
-            //print error
+            eightDELRQ(message);
         }
-        else if(message[0] == 9)
+        else if(message0 == 10)
         {
-            //ERROR
-            //print error
+            tenDisc(message);
         }
-        else
-        {
-            //invalid
+        else{
+            //error
+            connections.send(connectionId, ERRORSend(0));
         }
-        //connection.send()
     }
 
     @Override
@@ -106,153 +103,290 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
     private void oneRRQ(byte[] message){
-        byte[] errorResponse = new byte[2]; 
-        errorResponse[0] = 0;  //GP as written in the file, the block num for error
-        errorResponse[1] = 0; //diff error
-
-        byte[] succsResponse = new byte[1];
-        succsResponse[0] = 0;
+        int errNum = -1;
+        boolean fileFound = false;
         
         //have not log in yet
         if(connectionId == 0){
-            errorResponse[1] = 6;
+            errNum = 6;
         }
-        else{
-            //convert the byte array to a string
-            String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
-            String directoryPath = "/Files/";
-            File directory = new File(directoryPath);
-            if (directory.exists() && directory.isDirectory()) {
-                File[] files = directory.listFiles();
-
-                // Iterate through the files to find the file we are looking for
-                for (File file : files) {
-                    if (file.isFile() && file.getName().equals(fileName)) {
+        
+        //convert the byte array to a string
+        String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
+            for (String key : fileMap.keySet()) {
+                if (key.equals(fileName)) {
+                    if(errNum != -1){
                         try {
-                            FileInputStream fileInputStream = new FileInputStream(file);
-                            connections.send(connectionId, succsResponse);
-                            connections.send(connectionId, fileInputStream.readAllBytes());
+                            FileInputStream fileInputStream = new FileInputStream(fileMap.get(key));
+                            byte[] fileBytes = fileInputStream.readAllBytes();
+                            int blockcounter = 1;
+                            byte[] dataPacket = DATASend(blockcounter, fileBytes,0, false); 
+                            connections.send(connectionId, dataPacket);
+
+                            while(fileBytes.length > packetSize*blockcounter){
+                                blockcounter++;
+                                dataPacket = DATASend(blockcounter, fileBytes, packetSize*blockcounter, false);
+                                connections.send(connectionId, dataPacket);
+                            }
+                            
                             fileInputStream.close();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-                        break; // Exit the loop once the file has found
                     }
-                    else{
-                        //file not found
-                        errorResponse[1] = 1;
-                    }
+                    fileFound = true;
+                    break; // Exit the loop once the file has found
                 }
             }
-            else{
-                //files directory not found
-                errorResponse[1] = 1;
+            if(!fileFound){
+                errNum = 1;
             }
-            //send error
-        }
-        connections.send(connectionId, errorResponse);  
+        
+            if(errNum != -1){
+                connections.send(connectionId, ERRORSend(errNum));
+            }
     }
 
     private void twoWRQ(byte[] message){
-        byte[] response = new byte[1]; 
+        int errNum = -1;
+
+        //have not log in yet
+        if(connectionId == 0){
+            errNum = 6;
+        }
+
         byte[] fileNametoUpload = new byte[message.length - 1];
         for(int i = 0; i < message.length-1 ; i++){
             fileNametoUpload[i] = message[i+1];
         }
-
-        response[0] = -1;  
         
-        //have not log in yet
-        if(connectionId == 0){
-            response[0] = 6;
-        }
-
-        else{
-            String directoryPath = "/Files/";
-            File directory = new File(directoryPath);
-            if (directory.exists() && directory.isDirectory()) {
-                File[] files = directory.listFiles();
-
-                // Iterate through the files to find the file we are looking for
-                for (File file : files) {
-                    if (file.isFile() && file.getName().equals(fileNametoUpload)) {
-                        try {
-                            FileInputStream fileInputStream = new FileInputStream(file);
-                            response[0] = 5;
-                            fileInputStream.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                        break; // Exit the loop once the file is found
-                    }
+        fileNameString = new String(fileNametoUpload, 0, fileNametoUpload.length, StandardCharsets.UTF_8);
+        for (String key : fileMap.keySet()) {
+            if (key.equals(fileNameString)) {
+                errNum = 5;
+                break; // Exit the loop once the file is found
             }
         }
-        if(response[0] > -1){
-            connections.send(connectionId, response);  
+        if(errNum != -1){
+            ERRORSend(errNum);
         }
-        else{
+        else {
+            ACKSend(0); 
             //create the file
-            fileNameString = new String(fileNametoUpload, 0, fileNametoUpload.length, StandardCharsets.UTF_8);
-            File newFile = new File(directory, fileNameString);
-            try {
-                newFile.createNewFile();
-            } catch (IOException e) {
-                System.err.println("An error occurred: " + e.getMessage());
-            }
-            waitingForFile = true;
-            response[0] = 0;
-            connections.send(connectionId, response);
-        }
-    }
+            fileMap.put(fileNameString, new File("/Files/"+fileNameString));
+        }     
 }
 
-    private void threeData(byte[] message){
+    private void threeDataRecive(byte[] message){
 
-        if(waitingForFile){
-            //short packetSizeOfMSG = (short)(((short) message[0]) << 8 | (short) message[1]);
-            String filePath = "/File/"+ fileNameString; 
+        //short packetSizeOfMSG = (short)(((short) message[0]) << 8 | (short) message[1]);
+        String filePath = "/File/"+ fileNameString; 
 
-            try {
-                // Create a FileWriter object with the specified file path
-                FileWriter writer = new FileWriter(filePath);
-                String dataToFile = new String(message, 5, message.length, StandardCharsets.UTF_8);
+        try {
+            // Create a FileWriter object with the specified file path
+            FileWriter writer = new FileWriter(filePath);
+            String dataToFile = new String(message, 5, message.length, StandardCharsets.UTF_8);
 
-                for(int i = 0; i < dataToFile.length(); i++){
-                    if(dataToFile.charAt(i) != 0){
-                        writer.write(dataToFile.charAt(i));
-                    }
-                    else{
-                        writer.close(); 
-                        waitingForFile = false;
-                        fileNameString = "";
-                        break;
-                    } 
-                }
-                // Close the writer to release resources
-                writer.close(); //need to check 
-            } catch (IOException e) {
-            }          
+            for(int i = 0; i < dataToFile.length(); i++){
+                writer.write(dataToFile.charAt(i));
+            }
+            // Close the writer to release resources
+            writer.close(); //need to check 
+        } catch (IOException e) {
+        }  
+
+        if(message.length < packetSize){  //remember to check
+            nineSendBroadcast( fileNameString.getBytes() ,1);
+        }
+    }
+
+    private void fourACKRecive(byte[] message){
+        int blockNum = byteToShort(message, 2,3);
+        System.out.println("ACK " + blockNum);
+    }
+
+    private void fiveERRORRecive(byte[] message){
+        //TO DO
+    }
+
+    private void sixDIRQ(byte[] message){
+        if(connectionId == 0){
+            ERRORSend(6);
+        }
+        else{
+            String allFileNames= "";
+            for (String key : fileMap.keySet()) {
+                allFileNames += key + '0'; //check if we need to add \0
+            } 
+            byte[] allFileNamesBytes = allFileNames.getBytes();
+            byte[] dataPacket;
+            int index=0;
+            while(allFileNamesBytes.length > packetSize*index){
+                dataPacket = DATASend(index, allFileNamesBytes, packetSize*index, true);
+                connections.send(connectionId, dataPacket);
+                index++;
+            }
 
         }
     }
 
     private void sevenLOGRQ(byte[] message){
-        connectionId = byteToShort(message, 1);
-        byte[] response = new byte[1];      
+
+        connectionId = byteToShort(message, 1,message.length-1);
         //if the user is already logged in
-        if(connectionsMap.containsKey(connectionId)){
-            response[0] = 7; //check if works
+        if(holder.ids_login.get(connectionId) != null){
+            connections.send(connectionId, ERRORSend(7));  
         }
         else{
-            response[0] = 0;
             //add the user to the connectionsMap
             start(connectionId, connections);
+            connections.send(connectionId, ACKSend(0));  
         }
-        connections.send(connectionId, response);  
     }
 
-    private int byteToShort(byte[] byteArr, int index){
-        return ((byteArr[index] & 0xff) << 8) + (byteArr[index + 1] & 0xff);
+    private void eightDELRQ(byte[] message){
+        int errNum = -1;
+        //have not log in yet
+        if(connectionId == 0){
+            errNum = 6;
+        }
+        //loged in
+        else{
+            boolean fileFound = false;
+            String fileName = new String(message, 1,message.length, StandardCharsets.UTF_8);
+
+            for (String key : fileMap.keySet()) {
+                if (key.equals(fileName)) {
+                    fileMap.remove(key);
+                    fileFound = true;
+                    break; // Exit the loop once the file is found
+                }
+            }
+            if(!fileFound){
+                errNum = 1;
+            }
+        }
+        if(errNum != -1){
+            connections.send(connectionId, ERRORSend(errNum));
+        }
+        else{
+            connections.send(connectionId, ACKSend(0));         
+            nineSendBroadcast( fileNameString.getBytes() ,0);
+        }
     }
+
+    private void tenDisc(byte[] message){
+        if(connectionId == 0){
+            connections.send(connectionId,ERRORSend(6));
+        }
+        else{
+            shouldTerminate = true;
+            shouldTerminate();
+            connections.send(connectionId, ACKSend(0));
+        }
+    }
+
+    private void nineSendBroadcast( byte[] fileNametoUpload ,int flag){
+        byte[] announce = new byte[fileNametoUpload.length + 4]; 
+        announce[0] = (byte)((0 >> 8) & 0xff);  
+        announce[1] = (byte)((9 >> 8) & 0xff);  
+        announce[2] = (byte)((flag >> 8) & 0xff); // 0 for added 
+        for(int i = 0; i < fileNametoUpload.length; i++){
+            announce[i+3] = fileNametoUpload[i];
+        }
+        announce[announce.length-1] = 0;
+
+        for(int i = 0; i < holder.ids_login.size(); i++){
+                connections.send(i, announce);
+        }
+    }
+
+    private byte[] ERRORSend(int numError){
+        String err0= "Not defined, see error message (if any).";
+        String err1= "File not found -RRQ, DELRQ of non existing file";
+        String err2= "Access violation.";
+        String err3= "Disk full or allocation exceeded.";
+        String err4= "Illegal TFTP operation.";
+        String err5= "File already exists- file name exists for WRQ.";
+        String err6= "User not logged in -any opcode received before Login completes.";
+        String err7= "User already logged in -Login username already connected.";
+
+        //convert string to byte array
+        byte[] error0 = err0.getBytes();
+        byte[] error1 = err1.getBytes();
+        byte[] error2 = err2.getBytes();
+        byte[] error3 = err3.getBytes();
+        byte[] error4 = err4.getBytes();
+        byte[] error5 = err5.getBytes();
+        byte[] error6 = err6.getBytes();
+        byte[] error7 = err7.getBytes();
+        
+        //create the error response in the size of the error message
+        byte[] ERRORSend;
+        if(numError == 0)
+            ERRORSend = new byte[5 + error0.length];
+        else if(numError == 1)
+            ERRORSend = new byte[5 + error1.length];
+        else if(numError == 2)
+            ERRORSend = new byte[5 + error2.length];
+        else if(numError == 3)
+            ERRORSend = new byte[5 + error3.length];
+        else if(numError == 4)
+            ERRORSend = new byte[5 + error4.length];
+        else if(numError == 5)
+            ERRORSend = new byte[5 + error5.length];
+        else if(numError == 6)
+            ERRORSend = new byte[5 + error6.length];
+        else
+            ERRORSend = new byte[5 + error7.length];
+        
+        //insert values to the error response
+        ERRORSend[0] = (byte)((0 >> 8) & 0xff); 
+        ERRORSend[1] = (byte)((5 >> 8) & 0xff);
+        ERRORSend[2] = (byte)((0 >> 8) & 0xff); 
+        ERRORSend[3] = (byte)((numError >> 8) & 0xff);
+        for(int i = 0; i < error0.length; i++){
+            ERRORSend[i+4] = error0[i];
+        }
+        ERRORSend[ERRORSend.length-1] = 0;
+        return ERRORSend;
+    }
+
+    private byte[] ACKSend(int blockNum){
+        byte[] ack = new byte[4];
+        ack[0] = (byte)((0 >> 8) & 0xff); 
+        ack[1] = (byte)((4 >> 8) & 0xff);
+        ack[2] = (byte)((0 >> 8) & 0xff); 
+        ack[3] = (byte)((blockNum >> 8) & 0xff);
+        return ack;
+    }
+
+    private byte[] DATASend(int blockNum, byte[] data , int indexData, boolean isList){
+        //create data packet in the size of the packet remain to send
+        int min = Math.min(packetSize, data.length - indexData);
+        byte[] dataPacket = new byte[min];
+        if(isList){
+            for(int i = 0; i < dataPacket.length; i++){
+                dataPacket[i] = data[indexData +i];
+            }
+            return dataPacket;
+        }
+        else{   
+            dataPacket[0] = (byte)((0 >> 8) & 0xff);
+            dataPacket[1] = (byte)((3 >> 8) & 0xff);
+            dataPacket[2] = (byte)((0 >> 8) & 0xff);
+            dataPacket[3] = (byte)((dataPacket.length >> 8) & 0xff);
+            dataPacket[4] = (byte)((0 & 0xff));
+            dataPacket[5] = (byte)((blockNum >> 8) & 0xff);
+            for(int i = 6; i < dataPacket.length; i++){
+                dataPacket[i] = data[indexData +i];
+            }
+            return dataPacket;
+        }
+    }
+    
+    private int byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[fromIndex + 1] & 0xff);
+    }
+
 }
-

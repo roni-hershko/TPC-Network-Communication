@@ -1,8 +1,10 @@
 package bgu.spl.net.impl.tftp;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 
@@ -10,6 +12,7 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.impl.tftp.TftpProtocol;
 
 import bgu.spl.net.srv.BlockingConnectionHandler;
+import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.Server;
 
@@ -66,15 +69,15 @@ public class TftpServer {
         System.out.println("server closed!!!");
     }
 
-    
-    
+    public static void main(String[] args) {
+        Map<String, File> fileMap;
+
+        TftpServer server = new TftpServer(
+            Integer.decode(args[1]).intValue(),
+           ()-> new TftpProtocol(fileMap),
+           ()-> new TftpEncoderDecoder());
+            server.serve();
+    }
 }
 
-// public static void main(String[] args) {
-//     TftpServer server = new TftpServer(
-//         Integer.decode(args[1]).intValue(),
-//         ()-> new TftpProtocol(),
-//         ()-> new TftpEncoderDecoder());
-//         server.serve();
-// }
-
+ 
