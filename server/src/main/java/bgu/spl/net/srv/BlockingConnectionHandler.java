@@ -1,6 +1,7 @@
 package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
+import bgu.spl.net.api.BidiMessagingProtocol;
 import bgu.spl.net.api.MessagingProtocol;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -11,20 +12,27 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.impl.tftp.TftpProtocol;
 
 
-public class BlockingConnectionHandler implements Runnable, ConnectionHandler <byte[]>  {
+public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
-    private final TftpProtocol protocol;
-    private final TftpEncoderDecoder encdec;
+    private final BidiMessagingProtocol<T> protocol;
+    private final MessageEncoderDecoder<T> encdec;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
+    private int connection_id;
+    private Connections<T> connections_list;
 
-    public BlockingConnectionHandler(Socket sock, TftpEncoderDecoder reader, TftpProtocol protocol) {
+
+
+    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, BidiMessagingProtocol<T> protocol,int connection_id, Connections<T> connections_list) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
+        this.connection_id = connection_id;
+        this.connections_list = connections_list;
     }
+
 
     @Override
     public void run() {
@@ -35,7 +43,7 @@ public class BlockingConnectionHandler implements Runnable, ConnectionHandler <b
             out = new BufferedOutputStream(sock.getOutputStream());
 
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
-                byte[] nextMessage = encdec.decodeNextByte((byte) read);
+                T nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
                     protocol.process(nextMessage);
                 }
@@ -53,9 +61,10 @@ public class BlockingConnectionHandler implements Runnable, ConnectionHandler <b
     }
 
     @Override
-    public void send(byte[] msg) {
+    public void send(T msg) {
         try{
-            if (msg != null && msg instanceof byte[]) {
+            if (msg != null) {
+                 //maybe a bug here if "out" is not initialized
                 out.write(encdec.encode(msg));
                 out.flush();
             }

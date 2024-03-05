@@ -44,6 +44,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //DISC
         if(message.length == 2)
             shouldTerminate =true;
+
         if(message[0] == 1)
         {
             //RRQ
@@ -105,12 +106,16 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
     private void oneRRQ(byte[] message){
-        byte[] response = new byte[1]; 
-        response[0] = -1;  
+        byte[] errorResponse = new byte[2]; 
+        errorResponse[0] = 0;  //GP as written in the file, the block num for error
+        errorResponse[1] = 0; //diff error
+
+        byte[] succsResponse = new byte[1];
+        succsResponse[0] = 0;
         
         //have not log in yet
         if(connectionId == 0){
-            response[0] = 6;
+            errorResponse[1] = 6;
         }
         else{
             //convert the byte array to a string
@@ -125,29 +130,27 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                     if (file.isFile() && file.getName().equals(fileName)) {
                         try {
                             FileInputStream fileInputStream = new FileInputStream(file);
+                            connections.send(connectionId, succsResponse);
                             connections.send(connectionId, fileInputStream.readAllBytes());
                             fileInputStream.close();
                         } catch (IOException e) {
                             e.printStackTrace();
                         }
-                        break; // Exit the loop once the file is found
+                        break; // Exit the loop once the file has found
                     }
                     else{
                         //file not found
-                        response[0] = 1;
+                        errorResponse[1] = 1;
                     }
                 }
             }
             else{
                 //files directory not found
-                response[0] = 1;
+                errorResponse[1] = 1;
             }
             //send error
         }
-        if(response[0] > -1){
-            connections.send(connectionId, response);  
-        }
-
+        connections.send(connectionId, errorResponse);  
     }
 
     private void twoWRQ(byte[] message){
