@@ -60,7 +60,7 @@ public class TftpServer {
                         protocolFactory.get(),
                         connectionId.incrementAndGet(),
                         connections);
-
+                connections.connect(connectionId.get(), handler);
                 execute(handler);
             }
         } catch (IOException ex) {

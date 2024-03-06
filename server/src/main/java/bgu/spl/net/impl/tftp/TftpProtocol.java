@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.io.FileInputStream;
 import java.io.File;
 
@@ -21,17 +22,20 @@ class holder{
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private boolean shouldTerminate = false;
-    int connectionId =0;
+    int connectionId;
     Connections<byte[]> connections; //check impl and wtf
     //private Map<Integer, ConnectionHandler<byte[]>> connectionsMap;
     boolean waitingForFile = false;
     String fileNameString;
     private final int packetSize = 512;
     Map<String, File> fileMap;
+    String userName;
+    Map<String, Boolean> userNamesMap;
 
 
-    public TftpProtocol(Map<String, File> fileMapfromServer){
+    public TftpProtocol(Map<String, File> fileMapfromServer, Map<String, Boolean> userNamesMap){
         this.fileMap = fileMap;
+        this.userNamesMap = userNamesMap;
     }
 
     @Override
@@ -42,7 +46,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         holder.ids_login.put(connectionId, true);
     }
 
-    //byte to short and opposite
     @Override
     public void process(byte[] message) {
         short message0 = (short)(message[0] & 0xff);
@@ -73,22 +76,27 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else if(message0 == 6)
         {
+            //DIRQ
             sixDIRQ(message);
         }
         else if(message0 == 7)
         {
+            //LOGRQ
             sevenLOGRQ(message);
         }
         else if(message0 == 8)
         {
+            //DELRQ
             eightDELRQ(message);
         }
         else if(message0 == 10)
         {
-            tenDisc(message);
+            //DISC  
+            tenDISC(message);
         }
-        else{
-            //error
+        else
+        {
+            //ERROR 0
             connections.send(connectionId, ERRORSend(0));
         }
     }
@@ -98,6 +106,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         if(shouldTerminate){
             this.connections.disconnect(connectionId);
             holder.ids_login.remove(connectionId);
+            userNamesMap.remove(userName);
         }
         return shouldTerminate;
     }
@@ -107,7 +116,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         boolean fileFound = false;
         
         //have not log in yet
-        if(connectionId == 0){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
         
@@ -151,7 +160,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         int errNum = -1;
 
         //have not log in yet
-        if(connectionId == 0){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
 
@@ -210,7 +219,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
     private void sixDIRQ(byte[] message){
-        if(connectionId == 0){
+        if(holder.ids_login.get(connectionId) == null){
             ERRORSend(6);
         }
         else{
@@ -231,23 +240,35 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
     private void sevenLOGRQ(byte[] message){
-
-        connectionId = byteToShort(message, 1,message.length-1);
+        int errNum = -1;
+        userName = new String(message, 1, message.length, StandardCharsets.UTF_8);
         //if the user is already logged in
         if(holder.ids_login.get(connectionId) != null){
-            connections.send(connectionId, ERRORSend(7));  
+            errNum = 7;
         }
         else{
-            //add the user to the connectionsMap
-            start(connectionId, connections);
-            connections.send(connectionId, ACKSend(0));  
+            //check if the user name is already in the map
+            if(userNamesMap.get(userName) != null){
+                //user name not valid
+                errNum = 0;
+            }
+            else{
+                if(errNum == -1)
+                //add the user to the connectionsMap
+                start(connectionId, connections);
+                connections.send(connectionId, ACKSend(0));
+                userNamesMap.put(userName, true);
+            } 
         }
+        if(errNum != -1){
+            connections.send(connectionId, ERRORSend(errNum));
     }
+}
 
     private void eightDELRQ(byte[] message){
         int errNum = -1;
         //have not log in yet
-        if(connectionId == 0){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
         //loged in
@@ -275,8 +296,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
 
-    private void tenDisc(byte[] message){
-        if(connectionId == 0){
+    private void tenDISC(byte[] message){
+        if(holder.ids_login.get(connectionId) == null){
             connections.send(connectionId,ERRORSend(6));
         }
         else{
