@@ -22,7 +22,7 @@ public class TftpServer {
     private final Supplier<TftpProtocol> protocolFactory;
     private final Supplier<TftpEncoderDecoder> encdecFactory;
     private ServerSocket sock;
-     private AtomicInteger connectionId;
+    private AtomicInteger connectionId;
     private Connections<byte[]> connections;
 
     public TftpServer(
@@ -70,7 +70,7 @@ public class TftpServer {
     }
 
     public static void main(String[] args) {
-        Map<String, File> fileMap;
+        Map<String, File> fileMap = new java.util.concurrent.ConcurrentHashMap<String, File>();
 
         TftpServer server = new TftpServer(
             Integer.decode(args[1]).intValue(),
