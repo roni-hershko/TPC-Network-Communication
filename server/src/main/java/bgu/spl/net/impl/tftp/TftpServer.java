@@ -15,6 +15,7 @@ import bgu.spl.net.srv.BlockingConnectionHandler;
 import bgu.spl.net.srv.ConnectionHandler;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.Server;
+package flies;
 
 public class TftpServer {
     
@@ -71,10 +72,22 @@ public class TftpServer {
 
     public static void main(String[] args) {
         Map<String, File> fileMap = new java.util.concurrent.ConcurrentHashMap<String, File>();
+        Map<String, Boolean> userNamesMap= new java.util.concurrent.ConcurrentHashMap<String, Boolean>();
 
+        //insert all the files from the flies (folder in the server folder) into the fileMap
+        String folderPath = "/flies/";
+
+        File folder = new File(folderPath);
+        File[] files = folder.listFiles();
+        if (files != null) {
+            for (File file : files) {
+                userNamesMap.put(file.getName(), true);
+            }
+        }
+        
         TftpServer server = new TftpServer(
             Integer.decode(args[1]).intValue(),
-           ()-> new TftpProtocol(fileMap),
+           ()-> new TftpProtocol(fileMap, userNamesMap),
            ()-> new TftpEncoderDecoder());
             server.serve();
     }

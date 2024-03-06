@@ -385,6 +385,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private byte[] DATASend(int blockNum, byte[] data , int indexData, boolean isList){
         //create data packet in the size of the packet remain to send
         int min = Math.min(packetSize, data.length - indexData);
+        min = min + 6;
         byte[] dataPacket = new byte[min];
         if(isList){
             for(int i = 0; i < dataPacket.length; i++){
