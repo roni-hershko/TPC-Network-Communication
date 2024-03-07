@@ -420,7 +420,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
     
     private int byteToShort(byte[] byteArr, int fromIndex, int toIndex){
-        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[fromIndex + 1] & 0xff);
+        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[toIndex + 1] & 0xff);
     }
 
 }
