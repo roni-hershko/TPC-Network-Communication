@@ -39,10 +39,6 @@ public abstract class BaseServer<T> implements Server<T> {
 
     @Override
     public void serve() {
-        
-        //fix this , we will have to figure out how to insert handlers to connections 
-        //and initialize the protocols
-        //insert conection to a protocol and protocol to handler
 
         try (ServerSocket serverSock = new ServerSocket(port)) {
 			System.out.println("Server started");
@@ -61,6 +57,7 @@ public abstract class BaseServer<T> implements Server<T> {
                     newConnectionId,
                     connections);
 
+				connections.connect(connectionId.get(), handler);
                 execute(handler);
             }
         } catch (IOException ex) {

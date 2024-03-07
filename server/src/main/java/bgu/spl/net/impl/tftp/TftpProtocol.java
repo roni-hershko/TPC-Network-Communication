@@ -14,9 +14,8 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.io.FileInputStream;
 import java.io.File;
 
-//we can copy the code from echo except the process method
 class holder{
-    static ConcurrentHashMap<Integer, Boolean> ids_login = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<Integer, Boolean> ids_login = new ConcurrentHashMap<>(); //instead of bolean needs to be connection handler
 }
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
@@ -28,12 +27,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     boolean waitingForFile = false;
     String fileNameString;
     private final int packetSize = 512;
-    Map<String, File> fileMap;
+    Map<String, File> fileMap; //check if needed
     String userName;
-    Map<String, Boolean> userNamesMap;
+    Map<String, Boolean> userNamesMap; //checl if needed
 
 
-    public TftpProtocol(Map<String, File> fileMapfromServer, Map<String, Boolean> userNamesMap){
+    public TftpProtocol(Map<String, File> fileMap, Map<String, Boolean> userNamesMap){
         this.fileMap = fileMap;
         this.userNamesMap = userNamesMap;
     }
@@ -159,7 +158,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void twoWRQ(byte[] message){
         int errNum = -1;
 
-        //have not log in yet
+        //have not loged in yet
         if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
@@ -241,9 +240,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void sevenLOGRQ(byte[] message){
         int errNum = -1;
-        userName = new String(message, 1, message.length, StandardCharsets.UTF_8);
+        userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);
         //if the user is already logged in
-        if(holder.ids_login.get(connectionId) != null){
+        if(holder.ids_login.get(connectionId) != null){ //NO CONNECTION ID TO ADD
             errNum = 7;
         }
         else{
@@ -255,6 +254,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             else{
                 if(errNum == -1)
                 //add the user to the connectionsMap
+				// NEED TO ADD THE CONNECTION ID TO THE ids_login
                 start(connectionId, connections);
                 connections.send(connectionId, ACKSend(0));
                 userNamesMap.put(userName, true);
