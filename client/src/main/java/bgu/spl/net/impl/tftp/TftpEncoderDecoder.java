@@ -8,6 +8,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     private int len = 0;
     private final int packetSize = 512;
     private int stopValue = packetSize;
+    boolean waitingForData = false;
     boolean thereIsZero = false;
 
     //big endian lowest to highest
@@ -23,25 +24,26 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             if(thereIsZero){
                 thereIsZero = false; 
                 return bytes;  
-            }    
+            }
         }
+
         bytes[len] = nextByte;
         len++;
+
+
         short bytes0 = (short)(bytes[0] & 0xff);
-        if(len == 1 && (bytes0 == 6 || bytes0 == 10)) //case 6 or 10 
+        if(len == 1 && (bytes0 == 9 || bytes0 == 5)) //case brodcast or error
         {
-            stopValue = 1;
+            thereIsZero = true;
         }
-        else if(len == 3 )
+
+        else if(bytes0 == 4 ) //case ack
         {
-            if(bytes0==3)//case 3 
-                stopValue = (short)((bytes[1] & 0xff) << 8 | (bytes[2] & 0xff));  
-            if(bytes0 == 1 || bytes0 == 2 || bytes0 == 5 || bytes0 == 7 || bytes0 == 8 || bytes0 == 9)
-                thereIsZero = true; //cases 1,2,5,7,8,9
+            stopValue = 4;  
         }
-        else if(bytes0 == 4) //case 4
+        else if(bytes0 == 3) //case data
         {
-            stopValue = 3;
+            
         }
 
         if(len-1 == stopValue)
