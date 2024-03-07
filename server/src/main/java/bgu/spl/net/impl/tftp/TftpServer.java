@@ -71,8 +71,6 @@ public class TftpServer {
     // }
 
     public static void main(String[] args) {
-        Map<String, File> fileMap = new java.util.concurrent.ConcurrentHashMap<String, File>();
-        Map<String, Boolean> userNamesMap= new java.util.concurrent.ConcurrentHashMap<String, Boolean>();
 
         //insert all the files from the flies (folder in the server folder) into the fileMap
         // String folderPath = "/flies/";
@@ -95,7 +93,7 @@ public class TftpServer {
 
 		Server.threadPerClient(
 			7777, //port
-			() -> new TftpProtocol(fileMap, userNamesMap), //protocol factory
+			() -> new TftpProtocol(), //protocol factory
 			TftpEncoderDecoder::new //message encoder decoder factory
 		).serve();
 

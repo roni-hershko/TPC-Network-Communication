@@ -23,22 +23,38 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private boolean shouldTerminate = false;
     int connectionId;
     Connections<byte[]> connections; //check impl and wtf
-    private ConcurrentHashMap<Integer, ConnectionHandler<byte[]>> ids_login;
+    //private Map<Integer, ConnectionHandler<byte[]>> connectionsMap;
     boolean waitingForFile = false;
     String fileNameString;
     private final int packetSize = 512;
-    //Map<String, File> fileMap; //check if needed
+    ConcurrentHashMap<String, File> fileMap; 
     String userName;
-    //Map<String, Boolean> userNamesMap; //checl if needed
-	boolean isLogedIn = false;
 
+
+    public TftpProtocol(){
+
+		//insert all the files from the flies folder in the server into the fileMap
+		String folderPath = "/flies/";
+		File folder = new File(folderPath);
+        File[] files = folder.listFiles();
+		ConcurrentHashMap<String, File> filesMap = new ConcurrentHashMap<>(); 
+
+        if (files != null) {
+            for (File file : files) {
+					filesMap.put(file.getName(), file);
+				}
+            }
+        
+        this.fileMap = fileMap;
+        //this.userNamesMap = userNamesMap;
+    }
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
         this.shouldTerminate = false;
         this.connectionId = connectionId;
         this.connections = connections;
-        holder.ids_login.put(connectionId, true);
+        holder.ids_login.put(connectionId, handler);
     }
 
     @Override
@@ -101,6 +117,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         if(shouldTerminate){
             this.connections.disconnect(connectionId);
             holder.ids_login.remove(connectionId);
+            userNamesMap.remove(userName);
         }
         return shouldTerminate;
     }
@@ -108,8 +125,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void oneRRQ(byte[] message){
         int errNum = -1;
         boolean fileFound = false;
+        
         //have not log in yet
-        if(!isLogedIn){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
         
@@ -149,11 +167,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
     }
 
-
     private void twoWRQ(byte[] message){
         int errNum = -1;
+
         //have not loged in yet
-        if(!isLogedIn){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
 
@@ -179,8 +197,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }     
 }
 
-
     private void threeDataRecive(byte[] message){
+
         //short packetSizeOfMSG = (short)(((short) message[0]) << 8 | (short) message[1]);
         String filePath = "/File/"+ fileNameString; 
 
@@ -202,20 +220,17 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
 
-
     private void fourACKRecive(byte[] message){
         int blockNum = byteToShort(message, 2,3);
         System.out.println("ACK " + blockNum);
     }
 
-
     private void fiveERRORRecive(byte[] message){
         //TO DO
     }
 
-
     private void sixDIRQ(byte[] message){
-        if(!isLogedIn){
+        if(holder.ids_login.get(connectionId) == null){
             ERRORSend(6);
         }
         else{
@@ -237,9 +252,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void sevenLOGRQ(byte[] message){
         int errNum = -1;
-        userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);s
+        userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);
         //if the user is already logged in
-        if(isLogedIn){
+        if(holder.ids_login.get(connectionId) != null){ //NO CONNECTION ID TO ADD
             errNum = 7;
         }
         else{
@@ -255,7 +270,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 start(connectionId, connections);
                 connections.send(connectionId, ACKSend(0));
                 userNamesMap.put(userName, true);
-				isLogedIn = true;
             } 
         }
         if(errNum != -1){
@@ -263,11 +277,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 }
 
-
     private void eightDELRQ(byte[] message){
         int errNum = -1;
         //have not log in yet
-        if(!isLogedIn){
+        if(holder.ids_login.get(connectionId) == null){
             errNum = 6;
         }
         //loged in
@@ -295,9 +308,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
 
-
     private void tenDISC(byte[] message){
-        if(!isLogedIn){
+        if(holder.ids_login.get(connectionId) == null){
             connections.send(connectionId,ERRORSend(6));
         }
         else{
@@ -306,7 +318,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             connections.send(connectionId, ACKSend(0));
         }
     }
-
 
     private void nineSendBroadcast( byte[] fileNametoUpload ,int flag){
         byte[] announce = new byte[fileNametoUpload.length + 4]; 
@@ -322,7 +333,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 connections.send(i, announce);
         }
     }
-
 
     private byte[] ERRORSend(int numError){
         String err0= "Not defined, see error message (if any).";
@@ -375,7 +385,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         return ERRORSend;
     }
 
-
     private byte[] ACKSend(int blockNum){
         byte[] ack = new byte[4];
         ack[0] = (byte)((0 >> 8) & 0xff); 
@@ -384,7 +393,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         ack[3] = (byte)((blockNum >> 8) & 0xff);
         return ack;
     }
-
 
     private byte[] DATASend(int blockNum, byte[] data , int indexData, boolean isList){
         //create data packet in the size of the packet remain to send
@@ -411,7 +419,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
     
-
     private int byteToShort(byte[] byteArr, int fromIndex, int toIndex){
         return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[fromIndex + 1] & 0xff);
     }
