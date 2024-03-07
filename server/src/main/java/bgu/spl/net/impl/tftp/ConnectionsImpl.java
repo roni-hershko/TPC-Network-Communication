@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 //when brodcast, syncronized, because there are tpc and server thread
 
 public class ConnectionsImpl<T> implements Connections<T> {
-    private Map<Integer, ConnectionHandler<T>> connectionsMap;
+    private ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionsMap;
 
     public ConnectionsImpl(){
         connectionsMap = new ConcurrentHashMap<>();

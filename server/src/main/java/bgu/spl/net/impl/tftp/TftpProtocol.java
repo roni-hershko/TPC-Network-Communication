@@ -15,7 +15,7 @@ import java.io.FileInputStream;
 import java.io.File;
 
 class holder{
-    static ConcurrentHashMap<Integer, Boolean> ids_login = new ConcurrentHashMap<>(); //instead of bolean needs to be connection handler
+    static ConcurrentHashMap<Integer, ConnectionHandler<T>> ids_login = new ConcurrentHashMap<>(); 
 }
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
@@ -27,14 +27,26 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     boolean waitingForFile = false;
     String fileNameString;
     private final int packetSize = 512;
-    Map<String, File> fileMap; //check if needed
+    ConcurrentHashMap<String, File> fileMap; 
     String userName;
-    Map<String, Boolean> userNamesMap; //checl if needed
 
 
-    public TftpProtocol(Map<String, File> fileMap, Map<String, Boolean> userNamesMap){
+    public TftpProtocol(){
+
+		//insert all the files from the flies folder in the server into the fileMap
+		String folderPath = "/flies/";
+		File folder = new File(folderPath);
+        File[] files = folder.listFiles();
+		ConcurrentHashMap<String, File> filesMap = new ConcurrentHashMap<>(); 
+
+        if (files != null) {
+            for (File file : files) {
+					filesMap.put(file.getName(), file);
+				}
+            }
+        
         this.fileMap = fileMap;
-        this.userNamesMap = userNamesMap;
+        //this.userNamesMap = userNamesMap;
     }
 
     @Override
@@ -42,7 +54,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         this.shouldTerminate = false;
         this.connectionId = connectionId;
         this.connections = connections;
-        holder.ids_login.put(connectionId, true);
+        holder.ids_login.put(connectionId, handler);
     }
 
     @Override
@@ -408,7 +420,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
     
     private int byteToShort(byte[] byteArr, int fromIndex, int toIndex){
-        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[fromIndex + 1] & 0xff);
+        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[toIndex + 1] & 0xff);
     }
 
 }
