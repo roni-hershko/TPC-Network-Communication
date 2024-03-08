@@ -41,9 +41,11 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         {
             stopValue = 4;  
         }
-        else if(bytes0 == 3) //case data
+        else if(bytes0 == 3 && len==4) //case data
         {
-            
+            //as the packet size
+            stopValue = ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
+
         }
 
         if(len-1 == stopValue)
