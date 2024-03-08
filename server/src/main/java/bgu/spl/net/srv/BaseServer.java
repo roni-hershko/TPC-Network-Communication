@@ -43,7 +43,7 @@ public abstract class BaseServer<T> implements Server<T> {
         try (ServerSocket serverSock = new ServerSocket(port)) {
 			System.out.println("Server started");
 
-            this.sock = serverSock; //just to be able to close
+             this.sock = serverSock; //just to be able to close
 
             while (!Thread.currentThread().isInterrupted()) {
 
@@ -57,7 +57,8 @@ public abstract class BaseServer<T> implements Server<T> {
                     newConnectionId,
                     connections);
 
-				connections.connect(connectionId.get(), handler);
+				connections.connect(newConnectionId, handler);
+				protocolFactory.get().start(newConnectionId, connections);
                 execute(handler);
             }
         } catch (IOException ex) {

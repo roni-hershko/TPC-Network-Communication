@@ -11,10 +11,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.FileInputStream;
 import java.io.File;
+import bgu.spl.net.srv.ConnectionHandler;
 
 class holder{
-    static ConcurrentHashMap<Integer, String> ids_login = new ConcurrentHashMap<>(); 
+	static ConcurrentHashMap<Integer, String> logedInUserNames = new ConcurrentHashMap<>(); 
 }
+
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
@@ -26,8 +28,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     String userName;
 	int blokNum = 1;
 	ConcurrentHashMap<String, File> fileMap; 
-	Connections<byte[]> connections; //check impl and wtf
-    //private Map<Integer, ConnectionHandler<byte[]>> connectionsMap;
+	Connections<byte[]> connections; 
 
 
 
@@ -45,16 +46,18 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 				}
             }
         
-        this.fileMap = fileMap;
+        this.fileMap = fileMap; //TO DO
         //this.userNamesMap = userNamesMap;
     }
-
+	
 
     @Override
     public void start(int connectionId, Connections<byte[]> connections) {
-        this.shouldTerminate = false;
-        this.connectionId = connectionId;
-        this.connections = connections;
+	//Used to initiate the current client protocol with it's personal connection ID and the connections implementation
+	//Initiate the protocol with the active connections structure of the server and saves the owner client’s connection id
+		this.connectionId = connectionId;
+		this.connections = connections;
+
     }
 
 
@@ -118,8 +121,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     public boolean shouldTerminate() {
         if(shouldTerminate){
             this.connections.disconnect(connectionId);
-            holder.ids_login.remove(connectionId);
-            //userNamesMap.remove(userName);
+            holder.logedInUserNames.remove(connectionId);
         }
         return shouldTerminate;
     }
@@ -130,7 +132,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         boolean fileFound = false;
         
         //if the user is not logged in
-        if(!holder.ids_login.containsKey(connectionId)){
+        if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
         
@@ -175,7 +177,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         int errNum = -1;
 
         //if the user is not logged in
-        if(!holder.ids_login.containsKey(connectionId)){
+        if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
 
@@ -232,7 +234,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     private void fourACKRecive(byte[] message){
-        int blockNum = byteToShort(message, 2,3);
+    short blockNum = byteToShort(message, 2,3); 
         System.out.println("ACK " + blockNum);
     }
 
@@ -244,7 +246,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void sixDIRQ(byte[] message){
 		//if the user is not logged in
-        if(!holder.ids_login.containsKey(connectionId)){
+        if(!holder.logedInUserNames.containsKey(connectionId)){
             ERRORSend(6);
         }
         else{
@@ -265,25 +267,29 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private void sevenLOGRQ(byte[] message){
+    private void sevenLOGRQ(byte[] message)	{  
+		//need to check if there is an option for username to include numbers in perticular 0, if so need to change the decode ?????
+		//if the usename was  with 0 and cut in the middle?????????????
+
         int errNum = -1;
         userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);
         //if the user is already logged in
-        if(holder.ids_login.containsKey(connectionId)){ 
+        if(holder.logedInUserNames.containsKey(connectionId)){ 
             errNum = 7;
         }
         else{
             //if the user name is taken
-            if(holder.ids_login.containsValue(userName)){
+            if(holder.logedInUserNames.containsValue(userName)){
                 //user name not valid
                 errNum = 0;
             }
             else{
                 if(errNum == -1)
                 //add the user to the connectionsMap
-                start(connectionId, connections);
+				holder.logedInUserNames.put(connectionId, userName);
+                //start(connectionId, connections); 
                 connections.send(connectionId, ACKSend(0));
-				holder.ids_login.put(connectionId, userName);
+			
             } 
         }
         if(errNum != -1){
@@ -295,7 +301,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void eightDELRQ(byte[] message){
         int errNum = -1;
         //if the user is not logged in
-        if(!holder.ids_login.containsKey(connectionId)){
+        if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
         //loged in
@@ -326,7 +332,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void tenDISC(byte[] message){
 		//if the user is not logged in
-        if(!holder.ids_login.containsKey(connectionId)){
+        if(!holder.logedInUserNames.containsKey(connectionId)){
             connections.send(connectionId,ERRORSend(6));
         }
         else{
@@ -347,7 +353,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         announce[announce.length-1] = 0;
 
-        for(int i = 0; i < holder.ids_login.size(); i++){
+        for(int i = 0; i < holder.logedInUserNames.size(); i++){
                 connections.send(i, announce);
         }
     }
@@ -440,9 +446,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
     }
     
-	
-    private int byteToShort(byte[] byteArr, int fromIndex, int toIndex){
-        return ((byteArr[fromIndex] & 0xff) << 8) | (byteArr[toIndex + 1] & 0xff);
+
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+        return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
     }
 
 }

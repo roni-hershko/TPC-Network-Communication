@@ -7,9 +7,6 @@ import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionHandler;
 import java.util.concurrent.ConcurrentHashMap;
 
-//or brodcast or for only one client
-//maps for id, move by iterator for the ones you want to send to
-//when brodcast, syncronized, because there are tpc and server thread
 
 public class ConnectionsImpl<T> implements Connections<T> {
     private ConcurrentHashMap<Integer, ConnectionHandler<T>> connectionsMap;
@@ -42,7 +39,7 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
 
-	
+
 	//added
 	public void brodcast(T msg){
 		for (Map.Entry<Integer, ConnectionHandler<T>> entry : connectionsMap.entrySet()) {
@@ -50,9 +47,6 @@ public class ConnectionsImpl<T> implements Connections<T> {
 		}
 	}
 
-	public ConcurrentHashMap<Integer, ConnectionHandler<T>> getConnectionsMap(){
-		return connectionsMap;
-	}
 
 
 }
