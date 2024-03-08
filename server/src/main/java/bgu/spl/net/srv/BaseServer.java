@@ -50,6 +50,7 @@ public abstract class BaseServer<T> implements Server<T> {
                 Socket clientSock = serverSock.accept();
                 int newConnectionId = connectionId.getAndIncrement();
 
+
                 BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
                     clientSock,
                     encdecFactory.get(),
@@ -58,7 +59,7 @@ public abstract class BaseServer<T> implements Server<T> {
                     connections);
 
 				connections.connect(newConnectionId, handler);
-				protocolFactory.get().start(newConnectionId, connections);
+				handler.protocol.start(newConnectionId, connections);
                 execute(handler);
             }
         } catch (IOException ex) {

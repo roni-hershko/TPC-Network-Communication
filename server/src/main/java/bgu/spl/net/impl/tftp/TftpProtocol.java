@@ -15,6 +15,12 @@ import bgu.spl.net.srv.ConnectionHandler;
 
 class holder{
 	static ConcurrentHashMap<Integer, String> logedInUserNames = new ConcurrentHashMap<>(); 
+
+	static void printMap(){
+		for (ConcurrentHashMap.Entry<Integer, String> entry : logedInUserNames.entrySet()) {
+			System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
+		}
+	}
 }
 
 
@@ -26,14 +32,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     String fileNameString;
     private final int packetSize = 512;
     String userName;
-	int blokNum = 1;
+	short blockNum = 1;
 	ConcurrentHashMap<String, File> fileMap; 
 	Connections<byte[]> connections; 
 
 
 
     public TftpProtocol(){
-
 		//insert all the files from the flies folder in the server into the fileMap
 		String folderPath = "/flies/";
 		File folder = new File(folderPath);
@@ -46,8 +51,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 				}
             }
         
-        this.fileMap = fileMap; //TO DO
-        //this.userNamesMap = userNamesMap;
+        this.fileMap = filesMap; 
     }
 	
 
@@ -144,7 +148,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                         try {
                             FileInputStream fileInputStream = new FileInputStream(fileMap.get(key));
                             byte[] fileBytes = fileInputStream.readAllBytes();
-                            int blockcounter = 1;
+                            short blockcounter = 1;
                             byte[] dataPacket = DATASend(blockcounter, fileBytes,0, false); 
                             connections.send(connectionId, dataPacket);
 
@@ -197,7 +201,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 			connections.send(connectionId, ERRORSend(errNum));
         }
         else {
-			connections.send(connectionId, ACKSend(0));
+			connections.send(connectionId, ACKSend((short)0));
             //create the file
             fileMap.put(fileNameString, new File("/Files/"+fileNameString));
         }     
@@ -222,13 +226,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         } catch (IOException e) {
         }  
 		if(message.length > packetSize){
-			connections.send(connectionId, ERRORSend(blokNum));
-			blokNum++;
+			connections.send(connectionId, ERRORSend(blockNum));
+			blockNum++;
 		}
 
         if(message.length < packetSize){  //remember to check
             nineSendBroadcast( fileNameString.getBytes() ,1);
-			blokNum=1;
+			blockNum=1;
         }
     }
 
@@ -256,7 +260,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             } 
             byte[] allFileNamesBytes = allFileNames.getBytes();
             byte[] dataPacket;
-            int index=0;
+            short index=0;
             while(allFileNamesBytes.length > packetSize*index){
                 dataPacket = DATASend(index, allFileNamesBytes, packetSize*index, true);
                 connections.send(connectionId, dataPacket);
@@ -268,8 +272,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     private void sevenLOGRQ(byte[] message)	{  
-		//need to check if there is an option for username to include numbers in perticular 0, if so need to change the decode ?????
-		//if the usename was  with 0 and cut in the middle?????????????
 
         int errNum = -1;
         userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);
@@ -287,8 +289,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 if(errNum == -1)
                 //add the user to the connectionsMap
 				holder.logedInUserNames.put(connectionId, userName);
+				holder.printMap(); //remember to remove
                 //start(connectionId, connections); 
-                connections.send(connectionId, ACKSend(0));
+                connections.send(connectionId, ACKSend((short)0));
 			
             } 
         }
@@ -324,7 +327,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             connections.send(connectionId, ERRORSend(errNum));
         }
         else{
-            connections.send(connectionId, ACKSend(0));         
+            connections.send(connectionId, ACKSend((short)0));         
             nineSendBroadcast( fileNameString.getBytes() ,0);
         }
     }
@@ -338,7 +341,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         else{
             shouldTerminate = true;
             shouldTerminate();
-            connections.send(connectionId, ACKSend(0));
+            connections.send(connectionId, ACKSend((short)0));
         }
     }
 
@@ -411,17 +414,19 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private byte[] ACKSend(int blockNum){
+    private byte[] ACKSend(short blockNum){
         byte[] ack = new byte[4];
-        ack[0] = (byte)((0 >> 8) & 0xff); 
-        ack[1] = (byte)((4 >> 8) & 0xff);
-        ack[2] = (byte)((0 >> 8) & 0xff); 
-        ack[3] = (byte)((blockNum >> 8) & 0xff);
+		byte a = 4;
+		byte b = 0;
+        ack[0] = b; 
+        ack[1] = a;
+        ack[2] = b; 
+        ack[3] = (byte)blockNum;
         return ack;
     }
 
 
-    private byte[] DATASend(int blockNum, byte[] data , int indexData, boolean isList){
+    private byte[] DATASend(short blockNum, byte[] data , int indexData, boolean isList){
         //create data packet in the size of the packet remain to send
         int min = Math.min(packetSize, data.length - indexData);
         min = min + 6;
@@ -432,13 +437,15 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             }
             return dataPacket;
         }
-        else{   
-            dataPacket[0] = (byte)((0 >> 8) & 0xff);
-            dataPacket[1] = (byte)((3 >> 8) & 0xff);
-            dataPacket[2] = (byte)((0 >> 8) & 0xff);
-            dataPacket[3] = (byte)((dataPacket.length >> 8) & 0xff);
-            dataPacket[4] = (byte)((0 & 0xff));
-            dataPacket[5] = (byte)((blockNum >> 8) & 0xff);
+        else{
+			byte a = 3;
+			byte b = 0;
+            dataPacket[0] = b;
+            dataPacket[1] = a;
+            dataPacket[2] = b;
+            dataPacket[3] = (byte)dataPacket.length;
+            dataPacket[4] = b;
+            dataPacket[5] = (byte)blockNum;
             for(int i = 6; i < dataPacket.length; i++){
                 dataPacket[i] = data[indexData +i];
             }
