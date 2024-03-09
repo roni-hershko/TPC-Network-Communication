@@ -400,46 +400,74 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         byte[] error6 = err6.getBytes();
         byte[] error7 = err7.getBytes();
         
-        //create the error response in the size of the error message
+        //create the error response in the size of the error message and insert the message 
         byte[] ERRORSend;
-        if(numError == 0)
-            ERRORSend = new byte[5 + error0.length];
-        else if(numError == 1)
-            ERRORSend = new byte[5 + error1.length];
-        else if(numError == 2)
+        if(numError == 0){
+			ERRORSend = new byte[5 + error0.length];
+			for(int i = 0; i < error0.length; i++){
+				ERRORSend[i+4] = error0[i];
+			}
+		}
+        else if(numError == 1){
+			ERRORSend = new byte[5 + error1.length];
+			for(int i = 0; i < error1.length; i++){
+				ERRORSend[i+4] = error1[i];
+			}
+		}
+        else if(numError == 2){
             ERRORSend = new byte[5 + error2.length];
-        else if(numError == 3)
+			for(int i = 0; i < error2.length; i++){
+				ERRORSend[i+4] = error2[i];
+			}
+		}
+        else if(numError == 3){
             ERRORSend = new byte[5 + error3.length];
-        else if(numError == 4)
+			for(int i = 0; i < error3.length; i++){
+				ERRORSend[i+4] = error3[i];
+			}
+		}
+        else if(numError == 4){
             ERRORSend = new byte[5 + error4.length];
-        else if(numError == 5)
+			for(int i = 0; i < error4.length; i++){
+				ERRORSend[i+4] = error4[i];
+			}
+		}
+        else if(numError == 5){
             ERRORSend = new byte[5 + error5.length];
-        else if(numError == 6)
+			for(int i = 0; i < error5.length; i++){
+				ERRORSend[i+4] = error5[i];
+			}
+		}
+        else if(numError == 6){
             ERRORSend = new byte[5 + error6.length];
-        else
-            ERRORSend = new byte[5 + error7.length];
+			for(int i = 0; i < error6.length; i++){
+				ERRORSend[i+4] = error6[i];
+			}
+		}
+        else{
+			ERRORSend = new byte[5 + error7.length];
+			for(int i = 0; i < error7.length; i++){
+				ERRORSend[i+4] = error7[i];
+			}
+
+		}
         
         //insert values to the error response
-        ERRORSend[0] = (byte)((0 >> 8) & 0xff); 
-        ERRORSend[1] = (byte)((5 >> 8) & 0xff);
-        ERRORSend[2] = (byte)((0 >> 8) & 0xff); 
-        ERRORSend[3] = (byte)((numError >> 8) & 0xff);
-        for(int i = 0; i < error0.length; i++){
-            ERRORSend[i+4] = error0[i];
-        }
-        ERRORSend[ERRORSend.length-1] = 0;
+        ERRORSend[0] = (byte)0;
+        ERRORSend[1] = (byte)5;
+        ERRORSend[2] = shortTobyte((short)numError)[0];
+        ERRORSend[3] = shortTobyte((short)numError)[1];
+        ERRORSend[ERRORSend.length-1] = (byte)0;
         return ERRORSend;
     }
 
 
     private byte[] ACKSend(short blockNum){ //check
         byte[] ack = new byte[4];
-		byte a = 4;
-		byte b = 0;
-        ack[0] = b; 
-        ack[1] = a;
-        ack[2] = b; 
-        ack[3] = (byte)blockNum;
+        ack[0] = (byte)0; 
+        ack[1] = (byte)4;
+        ack[2] = shortTobyte(blockNum)[0];
+        ack[3] = shortTobyte(blockNum)[1];
         return ack;
     }
 
@@ -456,22 +484,25 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             return dataPacket;
         }
         else{
-			byte a = 3;
-			byte b = 0;
-            dataPacket[0] = b;
-            dataPacket[1] = a;
-            dataPacket[2] = b;
-            dataPacket[3] = (byte)dataPacket.length; //fix the size // checked with nir
-            dataPacket[4] = b;
-            dataPacket[5] = (byte)blockNum;
+            dataPacket[0] = (byte)0;
+            dataPacket[1] = (byte)3;
+            dataPacket[2] = shortTobyte((short)dataPacket.length)[0];
+            dataPacket[3] = shortTobyte((short)dataPacket.length)[1];
+            dataPacket[4] = shortTobyte(blockNum)[0];
+            dataPacket[5] = shortTobyte(blockNum)[1];
             for(int i = 6; i < dataPacket.length; i++){
                 dataPacket[i] = data[indexData+i-6];
             }
             return dataPacket;
         }
     }
-    
 
+
+    private byte[] shortTobyte(short a){
+		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
+	}
+	
+	
     private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){//check
         return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
     }
