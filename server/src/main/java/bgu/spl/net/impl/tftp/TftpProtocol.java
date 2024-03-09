@@ -28,11 +28,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private boolean shouldTerminate = false;
     int connectionId;
-    boolean waitingForFile = false;
+    boolean waitingForFile = false; //check	if needed
     String fileNameString;
     private final int packetSize = 512;
     String userName;
 	short blockNum = 1;
+	byte[] fileToSend;
 	ConcurrentHashMap<String, File> fileMap; 
 	Connections<byte[]> connections; 
 
@@ -40,7 +41,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     public TftpProtocol(){
 		//insert all the files from the flies folder in the server into the fileMap
-		String folderPath = "C:\\Users\\AvramH\\Desktop\\roni_spl\\ass3\\assignment-3\\server\\Flies";
+		String folderPath = "server/Flies/";
 		File folder = new File(folderPath);
         File[] files = folder.listFiles();
 		ConcurrentHashMap<String, File> filesMap = new ConcurrentHashMap<>(); 
@@ -81,7 +82,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         else if(message0 == 3)
         {
             //DATA
-            threeDataRecive( message);
+            threeDATARecive( message);
         }
         else if(message0 == 4)
         {
@@ -142,38 +143,30 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         
         //convert the byte array to a string
         String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
-            for (String key : fileMap.keySet()) { //check if need to insert what kind of file is it when writing in clients terminal and also when searching in folder
-                if (key.equals(fileName)) {
-					fileFound = true;
-                    if(errNum == -1){
-                        try {
-                            FileInputStream fileInputStream = new FileInputStream(fileMap.get(key));
-                            byte[] fileBytes = fileInputStream.readAllBytes();
-                            short blockcounter = 1;
-                            byte[] dataPacket = DATASend(blockcounter, fileBytes,0, false); 
-                            connections.send(connectionId, dataPacket);
-
-                            while(fileBytes.length > packetSize*blockcounter){
-                                blockcounter++;
-                                dataPacket = DATASend(blockcounter, fileBytes, packetSize*blockcounter, false);
-                                connections.send(connectionId, dataPacket);
-                            }
-                            
-                            fileInputStream.close();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    break; // Exit the loop once the file has found
-                }
-            }
-            if(!fileFound){
-                errNum = 1;
-            }
-        
-            if(errNum != -1){
-                connections.send(connectionId, ERRORSend(errNum));
-            }
+		for (String key : fileMap.keySet()) { //check if need to insert what kind of file is it when writing in clients terminal and also when searching in folder
+			if (key.equals(fileName)) {
+				fileFound = true;
+				if(errNum == -1){
+					try {
+						FileInputStream fileInputStream = new FileInputStream(fileMap.get(key));
+						fileToSend = fileInputStream.readAllBytes();
+						byte[] dataPacket = DATASend(blockNum, fileToSend,0, false); 
+						connections.send(connectionId, dataPacket);                            
+						fileInputStream.close();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+				break; // Exit the loop once the file has found
+			}
+		}
+		if(!fileFound){
+			errNum = 1;
+		}
+	
+		if(errNum != -1){
+			connections.send(connectionId, ERRORSend(errNum));
+		}
     }
 
 
@@ -202,16 +195,22 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else {
 			connections.send(connectionId, ACKSend((short)0));
-            //create the file
-            fileMap.put(fileNameString, new File("/Files/"+fileNameString));
-        }     
-}
+			//create a file with the name of the file to upload in the files folder in the server
+			String filePath = "server/Files/"+ fileNameString;
+			try {
+				File file = new File(filePath);
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+
+	}
 
 
-    private void threeDataRecive(byte[] message){
-        //short packetSizeOfMSG = (short)(((short) message[0]) << 8 | (short) message[1]);
-        String filePath = "/File/"+ fileNameString; 
-		
+    private void threeDATARecive(byte[] message){ //update of filenamestring
+        String filePath = "server/File/"+ fileNameString; 
+		short DATAblockNum = byteToShort(message, 3,4);
 
         try {
             // Create a FileWriter object with the specified file path
@@ -225,21 +224,36 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             writer.close(); //need to check 
         } catch (IOException e) {
         }  
-		if(message.length > packetSize){
-			connections.send(connectionId, ERRORSend(blockNum));
-			blockNum++;
-		}
 
-        if(message.length < packetSize){  //remember to check
+		connections.send(connectionId, ACKSend(DATAblockNum));
+		// if(message.length > packetSize){
+		// 	connections.send(connectionId, ERRORSend(blockNum));//?????
+		// 	blockNum++;
+		// }
+
+        if(message.length < packetSize){ 
             nineSendBroadcast( fileNameString.getBytes() ,1);
-			blockNum=1;
+			//add the new file to the fileMap
+			File file = new File(filePath);
+			fileMap.put(fileNameString, file);
+			// blockNum=1;
         }
     }
 
 
     private void fourACKRecive(byte[] message){
-    short blockNum = byteToShort(message, 2,3); 
-        System.out.println("ACK " + blockNum);
+		short ACKblockNum = byteToShort(message, 1,2); 
+		blockNum++;
+		//if there is more data packets to send
+		if(fileToSend.length > packetSize*ACKblockNum){
+			byte[] dataPacket = DATASend(blockNum, fileToSend, packetSize*(blockNum-1)+1, false);
+			connections.send(connectionId, dataPacket);
+		}
+		//if the file has been sent
+		else{
+			blockNum = 1;
+			fileToSend = null;
+		}
     }
 
 
@@ -248,7 +262,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private void sixDIRQ(byte[] message){
+    private void sixDIRQ(byte[] message){ //check
 		//if the user is not logged in
         if(!holder.logedInUserNames.containsKey(connectionId)){
             ERRORSend(6);
@@ -316,6 +330,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 if (key.equals(fileName)) {
                     fileMap.remove(key);
                     fileFound = true;
+					//delete the file from the server
+					File file = new File("server/Flies/"+fileName);
+					file.delete();
+
                     break; // Exit the loop once the file is found
                 }
             }
@@ -328,7 +346,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             connections.send(connectionId, ACKSend((short)0));         
-            nineSendBroadcast( fileNameString.getBytes() ,0);
+            nineSendBroadcast( fileNameString.getBytes() ,0); //check
         }
     }
 
@@ -414,7 +432,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private byte[] ACKSend(short blockNum){
+    private byte[] ACKSend(short blockNum){ //check
         byte[] ack = new byte[4];
 		byte a = 4;
 		byte b = 0;
@@ -426,7 +444,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private byte[] DATASend(short blockNum, byte[] data , int indexData, boolean isList){
+    private byte[] DATASend(short blockNum, byte[] data , int indexData, boolean isList){//check
         //create data packet in the size of the packet remain to send
         int min = Math.min(packetSize, data.length - indexData);
         min = min + 6;
@@ -443,18 +461,18 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             dataPacket[0] = b;
             dataPacket[1] = a;
             dataPacket[2] = b;
-            dataPacket[3] = (byte)dataPacket.length;
+            dataPacket[3] = (byte)dataPacket.length; //fix the size // checked with nir
             dataPacket[4] = b;
             dataPacket[5] = (byte)blockNum;
             for(int i = 6; i < dataPacket.length; i++){
-                dataPacket[i] = data[indexData +i];
+                dataPacket[i] = data[indexData+i-6];
             }
             return dataPacket;
         }
     }
     
 
-    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){//check
         return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
     }
 
