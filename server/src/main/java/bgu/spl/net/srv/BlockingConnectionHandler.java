@@ -14,7 +14,7 @@ import bgu.spl.net.impl.tftp.TftpProtocol;
 
 public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
 
-    private final BidiMessagingProtocol<T> protocol;
+    public final BidiMessagingProtocol<T> protocol;
     private final MessageEncoderDecoder<T> encdec;
     private final Socket sock;
     private BufferedInputStream in;
@@ -72,5 +72,6 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             e.printStackTrace();
         }
     }
+
 }
 
