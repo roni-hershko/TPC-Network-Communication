@@ -40,19 +40,20 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 					while (true) {
 						try {
 							String line = keyboard.readLine();	
-							synchronized (lock) {
-								out.write(new String(encdec.encode(protocol.creatRequest(line))));
+							byte[] lineToByte = protocol.creatRequest(line);
+							if(lineToByte != null){ //if the request is valid
+								out.write(new String(encdec.encode(lineToByte)));
 								out.newLine();
 								out.flush();
+								lock.notify();
+								try {
+									lock.wait();
+								} catch (InterruptedException e) {
+									e.printStackTrace();
+								}
 							}
 							}
 						catch (IOException e) {
-							e.printStackTrace();
-						}
-						lock.notify();
-						try {
-							lock.wait();
-						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
@@ -64,8 +65,25 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 						try {
 							String line = in.readLine();
 							byte[] lineToByte = line.getBytes();
+							byte[] ansFromServer = null;
+							byte[] DataToServer = null;
 							for (int i = 0; i < lineToByte.length; i++) {
-								protocol.process(encdec.decodeNextByte(lineToByte[i]));
+								ansFromServer = encdec.decodeNextByte(lineToByte[i]);
+							}
+							if(protocol.waitingForUpload){
+								while(protocol.waitingForUpload){
+									DataToServer = protocol.process(ansFromServer);
+									try {
+										out.write(new String(DataToServer));
+										out.newLine();
+										out.flush();
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							}
+							else{
+								protocol.process(ansFromServer);
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
