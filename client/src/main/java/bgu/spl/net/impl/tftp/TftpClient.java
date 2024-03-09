@@ -41,19 +41,17 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 						try {
 							String line = keyboard.readLine();	
 							byte[] lineToByte = protocol.creatRequest(line);
-							if(lineToByte != null){
+							if(lineToByte != null){ //if the request is valid
 								out.write(new String(encdec.encode(lineToByte)));
 								out.newLine();
 								out.flush();
-							}
-							else{ //client wrote somthing illigal
 								lock.notify();
 								try {
 									lock.wait();
 								} catch (InterruptedException e) {
 									e.printStackTrace();
 								}
-								}
+							}
 							}
 						catch (IOException e) {
 							e.printStackTrace();
