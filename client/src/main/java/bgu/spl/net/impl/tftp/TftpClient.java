@@ -86,7 +86,8 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
-						lock.notify();
+						if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData) //there is more to upload cant take more requests
+							lock.notify();
 					}
 				});
 	

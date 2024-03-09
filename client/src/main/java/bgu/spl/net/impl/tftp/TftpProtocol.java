@@ -22,7 +22,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
     Map<String, File> myFiles = new HashMap<>();
     private boolean shouldTerminate = false;
-    private boolean waitingForDirq = false;
+    boolean waitingForDirq = false;
+    boolean waitingForData = false;
     boolean waitingForUpload = false;
     private final int packetSize = 512;
     private String fileName;
@@ -34,7 +35,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         short message0 = (short)(msg[0] & 0xff);
         //the size o the packet
         int packetSizeofData = ((msg[1] & 0xff) << 8 | (msg[2] & 0xff));
-        if(message0 == 3){
+        if(message0 == 3)
+        {
             int blockNum = ((msg[2] & 0xff) << 8 | (msg[3] & 0xff));
             System.out.println("DATA " + blockNum);
             //if we get a data that has 0 byte and continue we know it is dirq and need to print it
@@ -46,9 +48,11 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             }
             else
             {
-                createFile(msg);
-                if(packetSizeofData < packetSize)
-                    waitingForDirq = false;
+                createFile(msg, blockNum);
+                if(packetSizeofData < packetSize){
+                    waitingForData = false;
+                    fileName = null;
+                }
             }
         }
         else if(message0 == 4) //ack
@@ -64,6 +68,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         {
             waitingForDirq = false;
             waitingForUpload = false;
+            waitingForData = false;
             fileName = null;
             ERROR(msg);
             return null;
@@ -96,6 +101,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                     if(!isFileExist(data)){
                         dataBytes = data.getBytes(StandardCharsets.UTF_8);
                         fileName = data;
+                        waitingForData = true;
                         opcode = RRQ_OPCODE;
                     }
                     else{
@@ -112,7 +118,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                     else{
                         selfError(1);
                     }
-                    
                     break;
                 case "DIRQ":
                     opcode = DIRQ_OPCODE;
@@ -151,8 +156,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         }
         else
             return null;
-        
-
     }
 
     @Override
@@ -177,7 +180,25 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         }
     }
 
-    public void createFile(byte[] msg) {
+    public void createFile(byte[] msg, int blockNum) {
+
+        //creat the file
+        if(blockNum == 1){
+           String directoryPath = "/File/";
+           File file = new File(directoryPath + fileName);
+   
+           try {
+               // Create the file
+               if (file.createNewFile()) {
+                   System.out.println("File created successfully.");
+               } else {
+                   System.out.println("File already exists.");
+               }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
         String filePath = "/File/"+ fileName; 
 
         try {
