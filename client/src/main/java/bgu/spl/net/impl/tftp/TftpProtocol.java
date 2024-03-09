@@ -2,6 +2,7 @@ package bgu.spl.net.impl.tftp;
 import bgu.spl.net.api.MessagingProtocol;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,11 +20,15 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     private static final byte DELRQ_OPCODE = 8;
     private static final byte DISC_OPCODE = 10;
 
+    Map<String, File> myFiles = new HashMap<>();
     private boolean shouldTerminate = false;
     private boolean waitingForDirq = false;
+    boolean waitingForUpload = false;
     private final int packetSize = 512;
     private String fileName;
-    Map<String, File> myFiles = new HashMap<>();
+    private int blockNum = 0;
+    private int indexData = 0;
+
 
     public byte[] process(byte[] msg) {
         short message0 = (short)(msg[0] & 0xff);
@@ -41,25 +46,30 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             }
             else
             {
-                //write the data to the file
-                
-
+                createFile(msg);
                 if(packetSizeofData < packetSize)
                     waitingForDirq = false;
             }
         }
-        else if(message0 == 4)
+        else if(message0 == 4) //ack
         {
+            if(waitingForUpload){
+                return sendFile(blockNum, indexData);
+            }
             int ackNum = ((msg[1] & 0xff) << 8 | (msg[2] & 0xff));
             System.out.println("ACK " + ackNum);
             return null;
         }
         else if(message0 == 5)
         {
+            waitingForDirq = false;
+            waitingForUpload = false;
+            fileName = null;
             ERROR(msg);
             return null;
         }
-        else if(message0 ==9){
+        else if(message0 ==9)
+        {
             System.out.println("Broadcast message: " + new String(msg, 2, msg.length));
             return null;
         }
@@ -76,21 +86,33 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         String[] parts = message.split("\\s+", 2); // Split by first space
 
         // Determine opcode and data
-        byte opcode;
+        byte opcode = 0; // Default to invalid opcode
         byte[] dataBytes = null;
         if (parts.length == 2) {
             String command = parts[0];
             String data = parts[1];
             switch (command) {
                 case "RRQ":
-                    opcode = RRQ_OPCODE;
-                    dataBytes = data.getBytes(StandardCharsets.UTF_8);
-                    fileName = data;
+                    if(!isFileExist(data)){
+                        dataBytes = data.getBytes(StandardCharsets.UTF_8);
+                        fileName = data;
+                        opcode = RRQ_OPCODE;
+                    }
+                    else{
+                        selfError(5);
+                    }
                     break;
                 case "WRQ":
-                    opcode = WRQ_OPCODE;
-                    dataBytes = data.getBytes(StandardCharsets.UTF_8);
-                    fileName = data;
+                    if(isFileExist(data)){
+                        dataBytes = data.getBytes(StandardCharsets.UTF_8);
+                        fileName = data;
+                        waitingForUpload =true;
+                        opcode = WRQ_OPCODE;
+                    }
+                    else{
+                        selfError(1);
+                    }
+                    
                     break;
                 case "DIRQ":
                     opcode = DIRQ_OPCODE;
@@ -109,22 +131,27 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                     break;
 
                 default:
-                    throw new IllegalArgumentException("Invalid command: " + command);
+                    selfError(0);
             }
         } else {
-            throw new IllegalArgumentException("Invalid message format: " + message);
+            selfError(0);
         }
 
         // Concatenate the opcode, size (if needed), and data bytes
-        byte[] messageBytes = new byte[dataBytes.length + 2];
-        messageBytes[0] = opcode;
-        if (dataBytes != null) {
+        if(opcode!=0){
+            byte[] messageBytes = new byte[dataBytes.length + 2];
+            messageBytes[0] = opcode;
+            if (dataBytes != null) {
             for (int i = 0; i < dataBytes.length; i++) {
                 messageBytes[i + 1] = dataBytes[i];
             }
+            }
+            messageBytes[messageBytes.length - 1] = 0;
+            return messageBytes;
         }
-        messageBytes[messageBytes.length - 1] = 0;
-        return messageBytes;
+        else
+            return null;
+        
 
     }
 
@@ -139,15 +166,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public void printDirq(byte[] msg) {
-        String fileName;
         int lastIndex=0;
         while(lastIndex < msg.length){
             int firstIndex = lastIndex;
             while(msg[lastIndex]!=0){
                 lastIndex++;
             }
-            fileName = new String(msg, firstIndex, lastIndex-firstIndex);
-            System.out.println(fileName);
+            String fileNameDirq = new String(msg, firstIndex, lastIndex-firstIndex);
+            System.out.println(fileNameDirq);
         }
     }
 
@@ -167,4 +193,76 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         } catch (IOException e) {
         }  
     }
+
+    public byte[] sendFile(int blockNum, int indexData){
+        byte[] dataPacket = null;
+        try {
+            FileInputStream fileInputStream = new FileInputStream(myFiles.get(fileName));
+            byte[] fileBytes = fileInputStream.readAllBytes();
+            dataPacket = opcodeDATA(blockNum, fileBytes,indexData);  
+
+            if(fileBytes.length > packetSize*blockNum){//there is still file to send
+                blockNum++;
+            }
+            else{//end of file
+                waitingForUpload = false;
+                fileName = null;
+            }
+            fileInputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return dataPacket;
+    }
+    
+    private byte[] opcodeDATA(int blockNum, byte[] data , int indexData){
+        //create data packet in the size of the packet remain to send
+        int min = Math.min(packetSize, data.length - indexData);
+        min = min + 6;
+        byte[] dataPacket = new byte[min];
+        dataPacket[0] = (byte)((0 >> 8) & 0xff);
+        dataPacket[1] = (byte)((3 >> 8) & 0xff);
+        dataPacket[2] = (byte)((0 >> 8) & 0xff);
+        dataPacket[3] = (byte)((dataPacket.length >> 8) & 0xff);
+        dataPacket[4] = (byte)((0 & 0xff));
+        dataPacket[5] = (byte)((blockNum >> 8) & 0xff);
+        for(int i = 6; i < dataPacket.length; i++){
+            dataPacket[i] = data[indexData +i];
+        }
+        return dataPacket;
+    } 
+        
+    private boolean isFileExist(String fileName){
+        File file = new File("/File/"+fileName);
+        return file.exists();
+    }
+    
+    private void selfError(int errNum){
+        String err0= "Not defined, see error message (if any).";
+        String err1= "File not found -RRQ, DELRQ of non existing file";
+        String err2= "Access violation.";
+        String err3= "Disk full or allocation exceeded.";
+        String err4= "Illegal TFTP operation.";
+        String err5= "File already exists- file name exists for WRQ.";
+        String err6= "User not logged in -any opcode received before Login completes.";
+        String err7= "User already logged in -Login username already connected.";
+        if(errNum == 0)
+            System.out.println("Error: " + err0);
+        else if(errNum == 1)
+            System.out.println("Error: " + err1);
+        else if(errNum == 2)
+            System.out.println("Error: " + err2);
+        else if(errNum == 3)
+            System.out.println("Error: " + err3);
+        else if(errNum == 4)
+            System.out.println("Error: " + err4);
+        else if(errNum == 5)
+            System.out.println("Error: " + err5);
+        else if(errNum == 6)
+            System.out.println("Error: " + err6);
+        else if(errNum == 7)
+            System.out.println("Error: " + err7);
+    }
 }
+
+
