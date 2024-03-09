@@ -40,7 +40,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     public TftpProtocol(){
 		//insert all the files from the flies folder in the server into the fileMap
-		String folderPath = "/flies/";
+		String folderPath = "C:\\Users\\AvramH\\Desktop\\roni_spl\\ass3\\assignment-3\\server\\Flies";
 		File folder = new File(folderPath);
         File[] files = folder.listFiles();
 		ConcurrentHashMap<String, File> filesMap = new ConcurrentHashMap<>(); 
@@ -142,9 +142,10 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         
         //convert the byte array to a string
         String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
-            for (String key : fileMap.keySet()) {
+            for (String key : fileMap.keySet()) { //check if need to insert what kind of file is it when writing in clients terminal and also when searching in folder
                 if (key.equals(fileName)) {
-                    if(errNum != -1){
+					fileFound = true;
+                    if(errNum == -1){
                         try {
                             FileInputStream fileInputStream = new FileInputStream(fileMap.get(key));
                             byte[] fileBytes = fileInputStream.readAllBytes();
@@ -163,7 +164,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                             e.printStackTrace();
                         }
                     }
-                    fileFound = true;
                     break; // Exit the loop once the file has found
                 }
             }

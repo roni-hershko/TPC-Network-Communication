@@ -22,8 +22,10 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             if (len == 0) 
                 return null;
             if(thereIsZero){
-                thereIsZero = false; 
-                return resultArray();  //cut the array to the message size
+                thereIsZero = false;
+				byte[]resultArray= resultArray();  //cut the array to the message size
+				len=0;
+                return resultArray; 
             }    
         }
         bytes[len] = nextByte;
@@ -48,7 +50,9 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 		}
 
         if(len == stopValue){//need to check for user name with one char and for user name with 0 init
-			 return resultArray(); 
+			byte[]resultArray= resultArray();  //cut the array to the message size
+			len=0;
+			return resultArray; 
 		}
     	else{
             return null;
