@@ -143,7 +143,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         
         //convert the byte array to a string
         String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
-		for (String key : fileMap.keySet()) { //check if need to insert what kind of file is it when writing in clients terminal and also when searching in folder
+		for (String key : fileMap.keySet()) { 
 			if (key.equals(fileName)) {
 				fileFound = true;
 				if(errNum == -1){
@@ -204,7 +204,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 				e.printStackTrace();
 			}
 		}
-
 	}
 
 
@@ -364,13 +363,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private void nineSendBroadcast( byte[] fileNametoUpload ,int flag){
-        byte[] announce = new byte[fileNametoUpload.length + 4]; 
-        announce[0] = (byte)((0 >> 8) & 0xff);  
-        announce[1] = (byte)((9 >> 8) & 0xff);  
-        announce[2] = (byte)((flag >> 8) & 0xff); // 0 for added 
-        for(int i = 0; i < fileNametoUpload.length; i++){
-            announce[i+3] = fileNametoUpload[i];
+    private void nineSendBroadcast( byte[] fileNametoUploadOrDelete ,int flag){ //0 for delete 1 for added
+        byte[] announce = new byte[fileNametoUploadOrDelete.length + 4]; 
+        announce[0] = (byte)0;
+        announce[1] = (byte)9;  
+        announce[2] = (byte)flag;
+        for(int i = 0; i < fileNametoUploadOrDelete.length; i++){
+            announce[i+3] = fileNametoUploadOrDelete[i];
         }
         announce[announce.length-1] = 0;
 
