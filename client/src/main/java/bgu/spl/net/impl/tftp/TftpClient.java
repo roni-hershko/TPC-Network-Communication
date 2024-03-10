@@ -1,16 +1,10 @@
 package bgu.spl.net.impl.tftp;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.concurrent.atomic.AtomicInteger;
-import bgu.spl.net.impl.tftp.TftpProtocol;
-import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 
 	
 	public class TftpClient {
@@ -39,23 +33,26 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 				Object lock = new Object();
 
 				Thread KeyboardThread = new Thread(() -> {
-					BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
+					//creating a BufferedReader object to read input from the keyboard
+					BufferedReader keyboard = new BufferedReader(new java.io.InputStreamReader(System.in));
 					while (true) {
-						try {
-							String line = keyboard.readLine();	
-							byte[] lineToByte = protocol.creatRequest(line);
-							if(lineToByte != null){ //if the request is valid
-								out.write((encdec.encode(lineToByte)));
-								out.flush();
-								lock.notify();
-								try {
-									lock.wait();
-								} catch (InterruptedException e) {
-									e.printStackTrace();
+						synchronized (lock) {
+							try {
+								String line = keyboard.readLine();	
+								byte[] lineToByte = protocol.creatRequest(line);
+								if(lineToByte != null){ //if the request is valid
+									out.write((encdec.encode(lineToByte)));
+									out.flush();
+									lock.notify();
 								}
 							}
+							catch (IOException e) {
+								e.printStackTrace();
+							}
 						}
-						catch (IOException e) {
+						try {
+							lock.wait();
+						} catch (InterruptedException e) {
 							e.printStackTrace();
 						}
 					}
@@ -65,13 +62,12 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 				Thread ListenThread = new Thread(() -> {
 					while (true) {
 						try {
-							byte[] DataToServer = null;
 							int read;
-							while (!protocol.shouldTerminate() && (read = in.read()) >= 0) {
+							while (!protocol.shouldTerminate() && (read = in.read()) >= 0){
 								byte[] ansFromServer = encdec.decodeNextByte((byte) read);
 								if (ansFromServer != null) {
 									if(protocol.waitingForUpload){
-										DataToServer = protocol.process(ansFromServer);
+										byte[] DataToServer = protocol.process(ansFromServer);
 										try {
 											out.write((DataToServer));
 											out.flush();
@@ -87,8 +83,12 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
-						if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData) //there is more to upload cant take more requests
-							lock.notifyAll();
+					
+						synchronized (lock) {
+							if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData){ //there is more to upload cant take more requests
+								lock.notifyAll();
+							}
+						}
 					}
 				});
 	
