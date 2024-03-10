@@ -153,7 +153,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             selfError(0);
         }
 
-        // Concatenate the opcode, size (if needed), and data bytes
+        
         if(opcode!=0){
             if(opcode == RRQ_OPCODE || opcode == WRQ_OPCODE || opcode == LOGRQ_OPCODE || opcode == DELRQ_OPCODE){
                 byte[] messageBytes = new byte[dataBytes.length + 2];
