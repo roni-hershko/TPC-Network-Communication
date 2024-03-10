@@ -4,6 +4,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.util.concurrent.atomic.AtomicInteger;
 import bgu.spl.net.impl.tftp.TftpProtocol;
@@ -29,8 +32,8 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 
 			//BufferedReader and BufferedWriter automatically using UTF-8 encoding
 			try (Socket sock = new Socket(args[0], 7777);
-					BufferedReader in = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-					BufferedWriter out = new BufferedWriter(new OutputStreamWriter(sock.getOutputStream()))) {
+				BufferedInputStream in = new BufferedInputStream(sock.getInputStream());
+				BufferedOutputStream out = new BufferedOutputStream(sock.getOutputStream())) {
 				
 				System.out.println("sending message to server");
 				Object lock = new Object();
@@ -42,8 +45,7 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 							String line = keyboard.readLine();	
 							byte[] lineToByte = protocol.creatRequest(line);
 							if(lineToByte != null){ //if the request is valid
-								out.write(new String(encdec.encode(lineToByte)));
-								out.newLine();
+								out.write((encdec.encode(lineToByte)));
 								out.flush();
 								lock.notify();
 								try {
@@ -63,8 +65,8 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 				Thread ListenThread = new Thread(() -> {
 					while (true) {
 						try {
-							String line = in.readLine();
-							byte[] lineToByte = line.getBytes();
+							int line = in.read();
+							byte[] lineToByte =  new byte []{(byte)(line >> 8) , (byte)(line & 0xff)};
 							byte[] ansFromServer = null;
 							byte[] DataToServer = null;
 							for (int i = 0; i < lineToByte.length; i++) {
@@ -73,8 +75,7 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 							if(protocol.waitingForUpload){
 								DataToServer = protocol.process(ansFromServer);
 								try {
-									out.write(new String(DataToServer));
-									out.newLine();
+									out.write((DataToServer));
 									out.flush();
 								} catch (IOException e) {
 									e.printStackTrace();

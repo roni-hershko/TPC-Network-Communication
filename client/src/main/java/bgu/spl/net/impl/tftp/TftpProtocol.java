@@ -12,7 +12,7 @@ import java.util.Map;
 
 public class TftpProtocol implements MessagingProtocol<byte[]>{
 
-    private static final byte RRQ_OPCODE = 1;
+    private static final byte RRQ_OPCODE = 1; ///do cast to byte
     private static final byte WRQ_OPCODE = 2;
     private static final byte DATA_OPCODE = 3;
     private static final byte DIRQ_OPCODE = 6;
@@ -29,56 +29,66 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     private String fileName;
     private int blockNum = 0;
     private int indexData = 0;
+    private byte[] dirqData = new byte[0];
 
 
     public byte[] process(byte[] msg) {
-        short message0 = (short)(msg[0] & 0xff);
-        //the size o the packet
-        int packetSizeofData = ((msg[1] & 0xff) << 8 | (msg[2] & 0xff));
-        if(message0 == 3)
+        short message0 = (short)(msg[0] & 0xff); 
+        //the size of the packet
+        int packetSizeofData = byteToShort(msg, 1, 2);
+
+        if(message0 == 3) //data
         {
-            int blockNum = ((msg[2] & 0xff) << 8 | (msg[3] & 0xff));
+            int blockNum = byteToShort(msg, 2, 3);
             System.out.println("DATA " + blockNum);
-            //if we get a data that has 0 byte and continue we know it is dirq and need to print it
+            
             if(waitingForDirq)
             {
-                printDirq(msg);
-                if(packetSizeofData < packetSize)
+                addDataToDirq(msg, dirqData);
+                if(packetSizeofData < packetSize){
+                    printDirq(msg);
                     waitingForDirq = false;
+                    dirqData = new byte[0];
+                }
             }
             else
             {
-                createFile(msg, blockNum);
+                addContentToFile(msg, blockNum);
                 if(packetSizeofData < packetSize){
                     waitingForData = false;
                     fileName = null;
                 }
             }
+            return ACKSend((short)blockNum);
         }
         else if(message0 == 4) //ack
         {
             if(waitingForUpload){
                 return sendFile(blockNum, indexData);
             }
-            int ackNum = ((msg[1] & 0xff) << 8 | (msg[2] & 0xff));
+            int ackNum = byteToShort(msg, 1, 2);
             System.out.println("ACK " + ackNum);
             return null;
         }
-        else if(message0 == 5)
+        else if(message0 == 5) //Error
         {
             waitingForDirq = false;
             waitingForUpload = false;
-            waitingForData = false;
             fileName = null;
+            if(waitingForData){
+                waitingForData = false;
+                File file = new File("client/Flies/"+fileName);
+                file.delete();
+            }
             ERROR(msg);
             return null;
         }
-        else if(message0 ==9)
+        else if(message0 ==9)//broadcast
         {
             System.out.println("Broadcast message: " + new String(msg, 2, msg.length));
             return null;
         }
-        else if(message0 == 10)
+        else if(message0 == 10)//disc
         {
             shouldTerminate = true;
             return null;
@@ -88,7 +98,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public byte[] creatRequest(String message) {
-        String[] parts = message.split("\\s+", 2); // Split by first space
+        String[] parts = message.split("\\s+", 2); // Split by first space 
 
         // Determine opcode and data
         byte opcode = 0; // Default to invalid opcode
@@ -103,6 +113,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                         fileName = data;
                         waitingForData = true;
                         opcode = RRQ_OPCODE;
+                        createFile();
                     }
                     else{
                         selfError(5);
@@ -144,15 +155,23 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
         // Concatenate the opcode, size (if needed), and data bytes
         if(opcode!=0){
-            byte[] messageBytes = new byte[dataBytes.length + 2];
-            messageBytes[0] = opcode;
-            if (dataBytes != null) {
-            for (int i = 0; i < dataBytes.length; i++) {
-                messageBytes[i + 1] = dataBytes[i];
+            if(opcode == RRQ_OPCODE || opcode == WRQ_OPCODE || opcode == LOGRQ_OPCODE || opcode == DELRQ_OPCODE){
+                byte[] messageBytes = new byte[dataBytes.length + 2];
+                messageBytes[0] = (byte) 0;
+                messageBytes[1] = opcode;
+                for (int i = 0; i < dataBytes.length; i++) {
+                    messageBytes[i + 2] = dataBytes[i];
+                }
+                messageBytes[messageBytes.length - 1] = 0;
+                return messageBytes;
             }
+            else //opcode == DIRQ_OPCODE || opcode == DISC_OPCODE)
+            {
+                byte[] messageBytes = new byte[2];
+                messageBytes[0] = (byte) 0;
+                messageBytes[1] = opcode;
+                return messageBytes;
             }
-            messageBytes[messageBytes.length - 1] = 0;
-            return messageBytes;
         }
         else
             return null;
@@ -180,26 +199,26 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         }
     }
 
-    public void createFile(byte[] msg, int blockNum) {
+    public void createFile(){
 
-        //creat the file
-        if(blockNum == 1){
-           String directoryPath = "/File/";
-           File file = new File(directoryPath + fileName);
-   
-           try {
-               // Create the file
-               if (file.createNewFile()) {
-                   System.out.println("File created successfully.");
-               } else {
-                   System.out.println("File already exists.");
-               }
+        String directoryPath = "client/File/";
+        File file = new File(directoryPath + fileName);
+
+        try {
+            // Create the file
+            if (file.createNewFile()) {
+                System.out.println("File created successfully.");
+            } else {
+                System.out.println("File already exists.");
+            }
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
+    }
 
-        String filePath = "/File/"+ fileName; 
+    public void addContentToFile(byte[] msg, int blockNum) {
+
+        String filePath = "client//File/"+ fileName; 
 
         try {
             // Create a FileWriter object with the specified file path
@@ -241,20 +260,21 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         int min = Math.min(packetSize, data.length - indexData);
         min = min + 6;
         byte[] dataPacket = new byte[min];
-        dataPacket[0] = (byte)((0 >> 8) & 0xff);
-        dataPacket[1] = (byte)((3 >> 8) & 0xff);
-        dataPacket[2] = (byte)((0 >> 8) & 0xff);
-        dataPacket[3] = (byte)((dataPacket.length >> 8) & 0xff);
-        dataPacket[4] = (byte)((0 & 0xff));
-        dataPacket[5] = (byte)((blockNum >> 8) & 0xff);
+        dataPacket[0] = (byte)0;
+        dataPacket[1] = (byte)3;
+        dataPacket[2] = shortTobyte((short)dataPacket.length)[0];
+        dataPacket[3] = shortTobyte((short)dataPacket.length)[1];
+        dataPacket[4] = shortTobyte((short)blockNum)[0];
+        dataPacket[5] = shortTobyte((short)blockNum)[1];
         for(int i = 6; i < dataPacket.length; i++){
-            dataPacket[i] = data[indexData +i];
+            dataPacket[i] = data[indexData + i - 6];
         }
+        indexData = indexData + dataPacket.length - 6;
         return dataPacket;
     } 
         
     private boolean isFileExist(String fileName){
-        File file = new File("/File/"+fileName);
+        File file = new File("client/File/"+fileName);
         return file.exists();
     }
     
@@ -284,6 +304,37 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         else if(errNum == 7)
             System.out.println("Error: " + err7);
     }
+
+    private byte[] ACKSend(short blockNum){ //check
+        byte[] ack = new byte[4];
+        ack[0] = (byte)0; 
+        ack[1] = (byte)4;
+        ack[2] = shortTobyte(blockNum)[0];
+        ack[3] = shortTobyte(blockNum)[1];
+        return ack;
+    }
+
+    private byte[] addDataToDirq(byte[] newData, byte[] dirqData){
+        byte[] ans = new byte[dirqData.length + newData.length];
+        for (int i = 0; i < dirqData.length; i++) {
+            ans[i] = dirqData[i];
+        }
+        for (int i = 0; i < newData.length; i++) {
+            ans[i + dirqData.length] = newData[i];
+        }
+        return ans;
+    }   
+
+    private byte[] shortTobyte(short a){
+		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
+	}
+	
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){//check
+        return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
+    }
+
+
+
 }
 
 
