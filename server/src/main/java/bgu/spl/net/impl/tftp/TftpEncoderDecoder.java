@@ -10,13 +10,10 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     private int stopValue = packetSize;
     boolean thereIsZero = false;
 
-    //big endian lowest to highest
-    //get from the  cilent packet with size 512
-    //use get input stream read
+
     @Override
     public byte[] decodeNextByte(byte nextByte) {
         Byte nextByteB = nextByte;
-        //short nextByteShort = nextByteB.shortValue();  
 
         if(nextByteB== 0){
             if (len == 0) 
