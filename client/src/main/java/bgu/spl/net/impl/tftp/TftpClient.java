@@ -65,30 +65,30 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 				Thread ListenThread = new Thread(() -> {
 					while (true) {
 						try {
-							int line = in.read();
-							byte[] lineToByte =  new byte []{(byte)(line >> 8) , (byte)(line & 0xff)};
-							byte[] ansFromServer = null;
 							byte[] DataToServer = null;
-							for (int i = 0; i < lineToByte.length; i++) {
-								ansFromServer = encdec.decodeNextByte(lineToByte[i]);
-							}
-							if(protocol.waitingForUpload){
-								DataToServer = protocol.process(ansFromServer);
-								try {
-									out.write((DataToServer));
-									out.flush();
-								} catch (IOException e) {
-									e.printStackTrace();
+							int read;
+							while (!protocol.shouldTerminate() && (read = in.read()) >= 0) {
+								byte[] ansFromServer = encdec.decodeNextByte((byte) read);
+								if (ansFromServer != null) {
+									if(protocol.waitingForUpload){
+										DataToServer = protocol.process(ansFromServer);
+										try {
+											out.write((DataToServer));
+											out.flush();
+										} catch (IOException e) {
+											e.printStackTrace();
+										}
+									}
+									else{
+										protocol.process(ansFromServer);
+									}
 								}
-							}
-							else{
-								protocol.process(ansFromServer);
 							}
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
 						if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData) //there is more to upload cant take more requests
-							lock.notify();
+							lock.notifyAll();
 					}
 				});
 	
