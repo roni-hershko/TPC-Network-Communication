@@ -10,13 +10,10 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     private int stopValue = packetSize;
     boolean thereIsZero = false;
 
-    //big endian lowest to highest
-    //get from the  cilent packet with size 512
-    //use get input stream read
+
     @Override
     public byte[] decodeNextByte(byte nextByte) {
         Byte nextByteB = nextByte;
-        //short nextByteShort = nextByteB.shortValue();  
 
         if(nextByteB== 0){
             if (len == 0) 
@@ -25,6 +22,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
                 thereIsZero = false;
 				byte[]resultArray= resultArray();  //cut the array to the message size
 				len=0;
+				bytes = new byte[1 << 9];
                 return resultArray; 
             }    
         }
@@ -38,7 +36,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         }
 		//case 3 
         else if(len == 3 && opcode==3){
-            stopValue = (short) (((short) bytes [1]) << 8 | (short) (bytes [2])); 
+            stopValue = byteToShort(bytes, 1, 2) + 5; 
         }
 		//case 4
         else if(opcode == 4) {
@@ -49,9 +47,10 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 			thereIsZero = true; 
 		}
 
-        if(len == stopValue){//need to check for user name with one char and for user name with 0 init
+        if(len == stopValue){
 			byte[]resultArray= resultArray();  //cut the array to the message size
 			len=0;
+			bytes = new byte[1 << 9];
 			return resultArray; 
 		}
     	else{
@@ -74,4 +73,12 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 		}
 		return result;
 	}
+
+	private byte[] shortTobyte(short a){
+		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
+	}
+	
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+        return (short) ((((short)(byteArr[fromIndex]) & 0XFF)) << 8 | (short)(byteArr[toIndex] & 0XFF)); 
+    }
 }
