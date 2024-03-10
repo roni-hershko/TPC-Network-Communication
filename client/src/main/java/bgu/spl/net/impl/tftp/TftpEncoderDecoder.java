@@ -30,7 +30,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         bytes[len] = nextByte;
         len++;
 
-
         short bytes0 = (short)(bytes[0] & 0xff);
         if(len == 1 && (bytes0 == 9 || bytes0 == 5)) //case brodcast or error
         {
@@ -45,7 +44,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         {
             //as the packet size
             stopValue = ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
-
         }
 
         if(len-1 == stopValue)

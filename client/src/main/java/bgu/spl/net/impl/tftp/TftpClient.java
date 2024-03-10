@@ -52,7 +52,7 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 									e.printStackTrace();
 								}
 							}
-							}
+						}
 						catch (IOException e) {
 							e.printStackTrace();
 						}
@@ -71,15 +71,13 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 								ansFromServer = encdec.decodeNextByte(lineToByte[i]);
 							}
 							if(protocol.waitingForUpload){
-								while(protocol.waitingForUpload){
-									DataToServer = protocol.process(ansFromServer);
-									try {
-										out.write(new String(DataToServer));
-										out.newLine();
-										out.flush();
-									} catch (IOException e) {
-										e.printStackTrace();
-									}
+								DataToServer = protocol.process(ansFromServer);
+								try {
+									out.write(new String(DataToServer));
+									out.newLine();
+									out.flush();
+								} catch (IOException e) {
+									e.printStackTrace();
 								}
 							}
 							else{
@@ -88,7 +86,8 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 						} catch (IOException e) {
 							e.printStackTrace();
 						}
-						lock.notify();
+						if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData) //there is more to upload cant take more requests
+							lock.notify();
 					}
 				});
 	
