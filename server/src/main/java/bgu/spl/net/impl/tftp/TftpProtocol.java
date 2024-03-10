@@ -152,15 +152,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		// 	if (key.equals(fileName)) {
 		String folderPath = "server/Flies/";	
 		Path filePath = Paths.get(folderPath,fileName);
-		if(Files.exists(filePath)){
+		if(Files.exists(filePath)){//PROBLEM
 			fileFound = true;
 			if(errNum == -1){
 				try {
-					FileInputStream fileInputStream = new FileInputStream(holder.fileMap.get(fileName)); //fileMap.get(key)
-					fileToSend = fileInputStream.readAllBytes();
+					fileToSend = Files.readAllBytes(filePath);
 					byte[] dataPacket = DATASend(blockNum, fileToSend,0); 
 					connections.send(connectionId, dataPacket);                            
-					fileInputStream.close();
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
@@ -473,28 +471,21 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private byte[] DATASend(short blockNum, byte[] data , int indexData){//check
         //create data packet in the size of the packet remain to send
-        int min = Math.min(packetSize, data.length - indexData);
-        min = min + 6;
-        byte[] dataPacket = new byte[min];
-        // if(isList){
-        //     for(int i = 0; i < dataPacket.length; i++){
-        //         dataPacket[i] = data[indexData +i];
-        //     }
-        //     return dataPacket;
-        // }
-        // else{
+        int dataSectionSize = Math.min(packetSize, data.length - indexData);
+        byte[] dataPacket = new byte[dataSectionSize + 6];
 		dataPacket[0] = (byte)0;
 		dataPacket[1] = (byte)3;
-		dataPacket[2] = shortTobyte((short)dataPacket.length)[0];
-		dataPacket[3] = shortTobyte((short)dataPacket.length)[1];
-		dataPacket[4] = shortTobyte(blockNum)[0];
-		dataPacket[5] = shortTobyte(blockNum)[1];
+		byte[] dataSection = shortTobyte((short) dataSectionSize);
+		dataPacket[2] = dataSection[0];
+		dataPacket[3] = dataSection[1];
+		byte[] blockNumber = shortTobyte((short)blockNum);
+		dataPacket[4] = blockNumber[0];
+		dataPacket[5] = blockNumber[1];
 		for(int i = 6; i < dataPacket.length; i++){
 			dataPacket[i] = data[indexData+i-6];
 		}
 		return dataPacket;
     }
-
 
     private byte[] shortTobyte(short a){
 		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
