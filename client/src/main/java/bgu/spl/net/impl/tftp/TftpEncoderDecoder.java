@@ -25,6 +25,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
                 thereIsZero = false; 
                 byte[]resultArray= resultArray();  //cut the array to the message size
                 len=0;
+                bytes = new byte[1 << 9];
                 return resultArray;  
             }
         }
@@ -45,12 +46,13 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         else if(bytes0 == 3 && len==4) //case data
         {
             //as the packet size
-            stopValue = ((bytes[1] & 0xff) << 8) | (bytes[2] & 0xff);
+            stopValue = byteToShort(bytes, 1, 2) + 5;
         }
 
-        if(len-1 == stopValue){
+        if(len == stopValue){
             byte[]resultArray= resultArray();  //cut the array to the message size
             len=0;
+            bytes = new byte[1 << 9];
             return resultArray;
         }
         else
@@ -69,4 +71,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 		}
 		return result;
 	}
+
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+        return (short) ((((short)(byteArr[fromIndex]) & 0XFF)) << 8 | (short)(byteArr[toIndex] & 0XFF)); 
+    }
 }

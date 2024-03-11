@@ -1,16 +1,10 @@
 package bgu.spl.net.impl.tftp;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.concurrent.atomic.AtomicInteger;
-import bgu.spl.net.impl.tftp.TftpProtocol;
-import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 
 	
 	public class TftpClient {
@@ -19,81 +13,97 @@ import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 
 	
 			if (args.length == 0) {
-				args = new String[]{"localhost", "hello"};
+				args = new String[]{"localhost"};
 			}
-	
-			if (args.length < 2) {
-				System.out.println("you must supply two arguments: host, message");
-				System.exit(1);
-			}
-
-			TftpProtocol protocol = new TftpProtocol();
-			TftpEncoderDecoder encdec = new TftpEncoderDecoder();
-
-			//BufferedReader and BufferedWriter automatically using UTF-8 encoding
 			try (Socket sock = new Socket(args[0], 7777);
-				BufferedInputStream in = new BufferedInputStream(sock.getInputStream());
-				BufferedOutputStream out = new BufferedOutputStream(sock.getOutputStream())) {
-				
-				System.out.println("sending message to server");
-				Object lock = new Object();
+					BufferedInputStream in = new BufferedInputStream(sock.getInputStream());
+					BufferedOutputStream out = new BufferedOutputStream(sock.getOutputStream())){
+			BlockingConnectionHandlerClient handler = new BlockingConnectionHandlerClient(sock, new TftpEncoderDecoder(), new TftpProtocol(), in, out);
+			Thread handlThread = new Thread(handler);
+			handlThread.start();
+			
+			KeyBoardConnectionHandler keyboardHandler = new KeyBoardConnectionHandler(handler, out, new BufferedReader(new java.io.InputStreamReader(System.in)));		
+			Thread keyboardThread = new Thread(keyboardHandler);
+			keyboardThread.start();
 
-				Thread KeyboardThread = new Thread(() -> {
-					BufferedReader keyboard = new BufferedReader(new InputStreamReader(System.in));
-					while (true) {
-						try {
-							String line = keyboard.readLine();	
-							byte[] lineToByte = protocol.creatRequest(line);
-							if(lineToByte != null){ //if the request is valid
-								out.write((encdec.encode(lineToByte)));
-								out.flush();
-								lock.notify();
-								try {
-									lock.wait();
-								} catch (InterruptedException e) {
-									e.printStackTrace();
-								}
-							}
-						}
-						catch (IOException e) {
-							e.printStackTrace();
-						}
-					}
-				});
-				KeyboardThread.start();
-
-				Thread ListenThread = new Thread(() -> {
-					while (true) {
-						try {
-							byte[] DataToServer = null;
-							int read;
-							while (!protocol.shouldTerminate() && (read = in.read()) >= 0) {
-								byte[] ansFromServer = encdec.decodeNextByte((byte) read);
-								if (ansFromServer != null) {
-									if(protocol.waitingForUpload){
-										DataToServer = protocol.process(ansFromServer);
-										try {
-											out.write((DataToServer));
-											out.flush();
-										} catch (IOException e) {
-											e.printStackTrace();
-										}
-									}
-									else{
-										protocol.process(ansFromServer);
-									}
-								}
-							}
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
-						if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData) //there is more to upload cant take more requests
-							lock.notifyAll();
-					}
-				});
-	
-				ListenThread.start();
+			try{
+				handlThread.join();
+				keyboardThread.interrupt();
 			}
+			catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+
+			// //BufferedReader and BufferedWriter automatically using UTF-8 encoding
+			// try (Socket sock = new Socket(args[0], 7777)){
+			// 	BufferedInputStream in = new BufferedInputStream(sock.getInputStream());
+			// 	BufferedOutputStream out = new BufferedOutputStream(sock.getOutputStream()); 
+				
+			// 	System.out.println("sending message to server");
+			// 	Object lock = new Object();
+
+			// 	Thread KeyboardThread = new Thread(() -> {
+			// 		//creating a BufferedReader object to read input from the keyboard
+			// 		BufferedReader keyboard = new BufferedReader(new java.io.InputStreamReader(System.in));
+			// 		while (true) {
+			// 			synchronized (lock) {
+			// 				try {
+			// 					String line = keyboard.readLine();	
+			// 					byte[] lineToByte = protocol.creatRequest(line);
+			// 					if(lineToByte != null){ //if the request is valid
+			// 						out.write((encdec.encode(lineToByte)));
+			// 						out.flush();
+			// 						lock.notify();
+			// 					}
+			// 				}
+			// 				catch (IOException e) {
+			// 					e.printStackTrace();
+			// 				}
+			// 			}
+			// 			try {
+			// 				lock.wait();
+			// 			} catch (InterruptedException e) {
+			// 				e.printStackTrace();
+			// 			}
+			// 		}
+			// 	});
+			// 	KeyboardThread.start();
+
+			// 	Thread ListenThread = new Thread(() -> {
+					
+			// 		try {
+			// 			int read;
+			// 			while (!protocol.shouldTerminate() && (in != null) && (read = in.read()) >= 0){
+			// 				byte[] ansFromServer = encdec.decodeNextByte((byte) read);
+			// 				if (ansFromServer != null) {
+			// 					if(protocol.waitingForUpload){
+			// 						byte[] DataToServer = protocol.process(ansFromServer);
+			// 						out.write((encdec.encode(DataToServer)));
+			// 						out.flush();
+			// 					}
+			// 					else{
+			// 						protocol.process(ansFromServer);
+			// 					}
+			// 				}
+			// 			}
+					
+				
+			// 		synchronized (lock) {
+			// 			if(!protocol.waitingForUpload && !protocol.waitingForDirq && !protocol.waitingForData){ //there is more to upload cant take more requests
+			// 				lock.notifyAll();
+			// 			}
+			// 		}
+					
+			// 	}catch (IOException e) {
+			// 		e.printStackTrace();
+			// 	}});
+				
+			// 	ListenThread.start();
+			// }
+			// catch (IOException e) {
+			// 	e.printStackTrace();
+			 
 		}
 	}
 	
