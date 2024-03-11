@@ -10,7 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TftpProtocol implements MessagingProtocol<byte[]>{
@@ -35,6 +37,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     //private int indexData = 0;
     private byte[] dirqData = new byte[0];
     byte[] fileToSend;
+    List<Byte> dataToSave = new ArrayList<>();
+
 
 
     public byte[] process(byte[] msg) {
@@ -67,6 +71,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                     waitingForData = false;
                     fileNameToDownload = "";
                     blockNum = 0;
+                    dataToSave.clear();
                     //indexData = 0;
                 }
                 return ACKSend((short)blockNumFromData);
@@ -272,15 +277,20 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 		String folderPath = "client/";	
 		Path filePath = Paths.get(folderPath,fileNameToDownload);
 		
-		byte[] data = new byte[msg.length-5];
-		for(int i = 0; i < data.length; i++){
-			data[i] = msg[i+5];
-		}
+		for(int i = 5; i < msg.length; i++){
+			dataToSave.add(msg[i]);
+		}   
 
-        try {
-			Files.write(filePath, data);
+        try { 
+            byte[] fileBytes = new byte[dataToSave.size()];
+            for (int i = 0; i < dataToSave.size(); i++) {
+                fileBytes[i] = dataToSave.get(i);
+            }
+            Files.write(filePath, fileBytes);
+            dataToSave.clear();
         } catch (IOException e) {
-        }  
+            e.printStackTrace();
+        }
     }
 
     public byte[] sendFile(int blockNum, int indexData){
@@ -292,7 +302,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 System.out.println("send file step 2 " );
 
                 fileToSend = Files.readAllBytes(filePath);
-                byte[] dataPacket = opcodeDATA(blockNum, fileToSend,indexData); 
+                byte[] dataPacket = opcodeDATA(blockNum, fileToSend, indexData); 
                 System.out.println("BLOCK NUM "+blockNum+ " ||file to send len "+fileToSend.length + " ||dataPacket len "+dataPacket.length);
                
                 if(dataPacket.length <= packetSize + 5){

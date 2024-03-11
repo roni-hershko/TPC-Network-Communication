@@ -18,19 +18,16 @@ import java.io.File;
 
 
 
-
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private boolean shouldTerminate = false;
     int connectionId;
-    // boolean waitingForFile = false; //check	if needed
     String fileNameString;
     private final int packetSize = 512;
     String userName;
 	short blockNum = 1;
 	byte[] fileToSend;
 	List<Byte> dataToSave = new ArrayList<>();
-	//ConcurrentHashMap<String, File> fileMap; 
 	Connections<byte[]> connections; 
 
 
@@ -207,7 +204,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		connections.send(connectionId, ACKSend(DATAblockNum));
 
         if(message.length < packetSize){ 
-			try {
+			try { //this part you need to add to adter line 66
 				byte[] fileBytes = new byte[dataToSave.size()];
 				for (int i = 0; i < dataToSave.size(); i++) {
 					fileBytes[i] = dataToSave.get(i);
