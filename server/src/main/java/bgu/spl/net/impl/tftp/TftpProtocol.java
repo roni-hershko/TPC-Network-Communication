@@ -347,8 +347,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             shouldTerminate = true;
-            shouldTerminate();
             connections.send(connectionId, ACKSend((short)0));
+            shouldTerminate();
         }
     }
 
