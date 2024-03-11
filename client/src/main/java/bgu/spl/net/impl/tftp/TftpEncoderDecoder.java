@@ -8,7 +8,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     private int len = 0;
     private final int packetSize = 512;
     private int stopValue = packetSize;
-    boolean waitingForData = false;
     boolean thereIsZero = false;
 
     //big endian lowest to highest
@@ -26,6 +25,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
                 byte[]resultArray= resultArray();  //cut the array to the message size
                 len=0;
                 bytes = new byte[1 << 9];
+                stopValue = packetSize;
+                thereIsZero = false;
                 return resultArray;  
             }
         }
@@ -53,6 +54,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             byte[]resultArray= resultArray();  //cut the array to the message size
             len=0;
             bytes = new byte[1 << 9];
+            stopValue = packetSize;
+            thereIsZero = false;
             return resultArray;
         }
         else

@@ -31,7 +31,6 @@ import java.net.Socket;
 			keyboardThread.start();
 			System.out.println("keyboardThread created");
 
-
 			try{
 				handlThread.join();
 				keyboardThread.interrupt();
