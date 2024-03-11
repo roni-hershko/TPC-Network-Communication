@@ -6,6 +6,9 @@ import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,66 +29,92 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     boolean waitingForData = false;
     boolean waitingForUpload = false;
     private final int packetSize = 512;
-    private String fileName;
-    private int blockNum = 0;
-    private int indexData = 0;
+    private String fileNameToUpload = "";
+    private String fileNameToDownload = "";
+    private int blockNum = 1;
+    //private int indexData = 0;
     private byte[] dirqData = new byte[0];
+    byte[] fileToSend;
 
 
     public byte[] process(byte[] msg) {
         short message0 = (short)(msg[0] & 0xff); 
+        int packetSizeofData=0;
         //the size of the packet
-        int packetSizeofData = byteToShort(msg, 1, 2);
-
+        if(msg.length>2){
+            packetSizeofData = byteToShort(msg, 1, 2);
+        }
         if(message0 == 3) //data
         {
-            int blockNum = byteToShort(msg, 2, 3);
-            System.out.println("DATA " + blockNum);
-            
             if(waitingForDirq)
             {
-                addDataToDirq(msg, dirqData);
+                dirqData = addDataToDirq(msg, dirqData);
                 if(packetSizeofData < packetSize){
                     printDirq(msg);
                     waitingForDirq = false;
                     dirqData = new byte[0];
                 }
+                return null;
             }
             else
             {
-                addContentToFile(msg, blockNum);
+                int blockNumFromData = byteToShort(msg, 3, 4);
+                System.out.println("DATA " + blockNumFromData);
+                
+                addContentToFile(msg, blockNumFromData);
                 if(packetSizeofData < packetSize){
+                    System.out.println("Download File Complete");
                     waitingForData = false;
-                    fileName = null;
+                    fileNameToDownload = "";
+                    blockNum = 0;
+                    //indexData = 0;
                 }
+                return ACKSend((short)blockNumFromData);
             }
-            return ACKSend((short)blockNum);
+            
         }
         else if(message0 == 4) //ack
         {
-            if(waitingForUpload){
-                return sendFile(blockNum, indexData);
-            }
             int ackNum = byteToShort(msg, 1, 2);
             System.out.println("ACK " + ackNum);
+            blockNum = ackNum+1;
+            if(waitingForUpload){
+                System.out.println("BEFORE SEND FILE ");
+                return sendFile(blockNum, packetSize*(ackNum));
+            }
+            else{
+                waitingForUpload = false;
+                blockNum = 1;
+                fileNameToUpload = "";
+                //indexData = 0;
+                fileToSend = new byte[0];
+            }
             return null;
         }
         else if(message0 == 5) //Error
         {
             waitingForDirq = false;
-            waitingForUpload = false;
-            fileName = null;
-            if(waitingForData){
-                waitingForData = false;
-                File file = new File("client/Flies/"+fileName);
+            if(waitingForUpload){
+                File file = new File("client/"+fileNameToUpload);
                 file.delete();
             }
+            waitingForUpload = false;
+            //indexData = 0;
+            blockNum = 0;
+            if(waitingForData){
+                File file = new File("client/"+fileNameToDownload);
+                file.delete();
+            }
+            waitingForData = false;
+            fileNameToDownload = "";
+            fileNameToUpload = "";
+
             ERROR(msg);
             return null;
         }
         else if(message0 ==9)//broadcast
         {
-            System.out.println("Broadcast message: " + new String(msg, 2, msg.length));
+            System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8));
             return null;
         }
         else if(message0 == 10)//disc
@@ -100,12 +129,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     public byte[] creatRequest(String message) {
         System.out.println("creatRequest step 1");
 
-        String[] parts = message.split("\\s+", 2); // Split by first space 
+        String[] parts = splitBySpace(message);
+
 
         // Determine opcode and data
         byte opcode = 0; // Default to invalid opcode
         byte[] dataBytes = null;
         if(parts.length == 1){
+
             System.out.println("creatRequest step 2 only one part");
 
             String command = parts[0];
@@ -129,7 +160,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 case "RRQ":
                     if(!isFileExist(data)){
                         dataBytes = data.getBytes(StandardCharsets.UTF_8);
-                        fileName = data;
+                        fileNameToDownload = data;
                         waitingForData = true;
                         opcode = RRQ_OPCODE;
                         createFile();
@@ -141,7 +172,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 case "WRQ":
                     if(isFileExist(data)){
                         dataBytes = data.getBytes(StandardCharsets.UTF_8);
-                        fileName = data;
+                        fileNameToUpload = data;
                         waitingForUpload =true;
                         opcode = WRQ_OPCODE;
                     }
@@ -170,6 +201,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             System.out.println("creatRequest step 3 opcode");
 
             if(opcode == RRQ_OPCODE || opcode == WRQ_OPCODE || opcode == LOGRQ_OPCODE || opcode == DELRQ_OPCODE){
+                System.out.println("creatRequest step 4 opcode");
+
                 byte[] messageBytes = new byte[dataBytes.length + 3];
                 messageBytes[0] = (byte) 0;
                 messageBytes[1] = opcode;
@@ -197,7 +230,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
    
     public void ERROR(byte[] msg) {
-        String errorMsg = new String(msg, 4, msg.length);
+        String errorMsg = new String(msg, 3, msg.length-3, StandardCharsets.UTF_8);
         System.out.println("Error: " + errorMsg);
     }
 
@@ -205,25 +238,26 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         int lastIndex=0;
         while(lastIndex < msg.length){
             int firstIndex = lastIndex;
-            while(msg[lastIndex]!=0){
+            while(lastIndex < msg.length && msg[lastIndex]!=0){
                 lastIndex++;
             }
             String fileNameDirq = new String(msg, firstIndex, lastIndex-firstIndex);
             System.out.println(fileNameDirq);
+            lastIndex++;
         }
     }
 
     public void createFile(){
 
-        String directoryPath = "client/File/";
-        File file = new File(directoryPath + fileName);
+        String directoryPath = "client/";
+        File file = new File(directoryPath + fileNameToDownload);
 
         try {
             // Create the file
             if (file.createNewFile()) {
                 System.out.println("File created successfully.");
             } else {
-                System.out.println("File already exists.");
+                selfError(0);
             }
             } catch (IOException e) {
                 e.printStackTrace();
@@ -232,63 +266,97 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
     public void addContentToFile(byte[] msg, int blockNum) {
 
-        String filePath = "client//File/"+ fileName; 
+        System.out.println("DATA block number: " + blockNum + " file name: " + fileNameToDownload);
+		String folderPath = "client/";	
+		Path filePath = Paths.get(folderPath,fileNameToDownload);
+		
+		byte[] data = new byte[msg.length-5];
+		for(int i = 0; i < data.length; i++){
+			data[i] = msg[i+5];
+		}
 
         try {
-            // Create a FileWriter object with the specified file path
-            FileWriter writer = new FileWriter(filePath);
-            String dataToFile = new String(msg, 5, msg.length, StandardCharsets.UTF_8);
-
-            for(int i = 0; i < dataToFile.length(); i++){
-                writer.write(dataToFile.charAt(i));
-            }
-            // Close the writer to release resources
-            writer.close(); //need to check 
+			Files.write(filePath, data);
         } catch (IOException e) {
         }  
     }
 
     public byte[] sendFile(int blockNum, int indexData){
-        byte[] dataPacket = null;
-        try {
-            FileInputStream fileInputStream = new FileInputStream(myFiles.get(fileName));
-            byte[] fileBytes = fileInputStream.readAllBytes();
-            dataPacket = opcodeDATA(blockNum, fileBytes,indexData);  
+        System.out.println("send file step 1: BLOCK NUM: "+blockNum+ " index data: "+indexData );
+        String folderPath = "client";	
+        Path filePath = Paths.get(folderPath,fileNameToUpload);
+        if(Files.exists(filePath)){//PROBLEM
+            try {
+                System.out.println("send file step 2 " );
 
-            if(fileBytes.length > packetSize*blockNum){//there is still file to send
-                blockNum++;
+                fileToSend = Files.readAllBytes(filePath);
+                byte[] dataPacket = opcodeDATA(blockNum, fileToSend,indexData); 
+                System.out.println("BLOCK NUM "+blockNum+ " ||file to send len "+fileToSend.length + " ||dataPacket len "+dataPacket.length);
+               
+                if(dataPacket.length <= packetSize + 5){
+                    waitingForUpload = false;
+                    blockNum = 1;
+                    fileNameToUpload = "";
+                }
+                return dataPacket;
+
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            else{//end of file
-                waitingForUpload = false;
-                fileName = null;
-            }
-            fileInputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("send file step 4 " );
         }
-        return dataPacket;
+        
+        else{
+            selfError(1);
+        }
+        return null;
+
+
+        // byte[] dataPacket = null;
+        // try {
+        //     FileInputStream fileInputStream = new FileInputStream(myFiles.get(fileName));
+        //     byte[] fileBytes = fileInputStream.readAllBytes();
+        //     dataPacket = opcodeDATA(blockNum, fileBytes,indexData);  
+
+        //     if(fileBytes.length > packetSize*blockNum){//there is still file to send
+        //         blockNum++;
+        //     }
+        //     else{//end of file
+        //         waitingForUpload = false;
+        //         blockNum = 0;
+        //         fileName = "";
+        //     }
+        //     fileInputStream.close();
+        // } catch (IOException e) {
+        //     e.printStackTrace();
+        // }
+        // return dataPacket;
     }
     
     private byte[] opcodeDATA(int blockNum, byte[] data , int indexData){
+        System.out.println("opcodeDATA step 1 " );
+
         //create data packet in the size of the packet remain to send
-        int min = Math.min(packetSize, data.length - indexData);
-        min = min + 6;
-        byte[] dataPacket = new byte[min];
-        dataPacket[0] = (byte)0;
-        dataPacket[1] = (byte)3;
-        dataPacket[2] = shortTobyte((short)dataPacket.length)[0];
-        dataPacket[3] = shortTobyte((short)dataPacket.length)[1];
-        dataPacket[4] = shortTobyte((short)blockNum)[0];
-        dataPacket[5] = shortTobyte((short)blockNum)[1];
-        for(int i = 6; i < dataPacket.length; i++){
-            dataPacket[i] = data[indexData + i - 6];
-        }
-        indexData = indexData + dataPacket.length - 6;
-        return dataPacket;
+        int dataSectionSize = Math.min(packetSize, data.length - indexData);
+        byte[] dataPacket = new byte[dataSectionSize + 6];
+		dataPacket[0] = (byte)0;
+		dataPacket[1] = (byte)3;
+		byte[] dataSection = shortTobyte((short) dataSectionSize);
+		dataPacket[2] = dataSection[0];
+		dataPacket[3] = dataSection[1];
+		byte[] blockNumber = shortTobyte((short)blockNum);
+		dataPacket[4] = blockNumber[0];
+		dataPacket[5] = blockNumber[1];
+		for(int i = 6; i < dataPacket.length; i++){
+			dataPacket[i] = data[indexData+i-6];
+		}
+        indexData = indexData + dataSectionSize;
+        System.out.println("opcodeDATA step 2, data send len  "+dataPacket.length );
+		return dataPacket;
     } 
         
     private boolean isFileExist(String fileName){
-        File file = new File("client/File/"+fileName);
+        File file = new File("client/"+fileName);
         return file.exists();
     }
     
@@ -347,6 +415,19 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
     }
 
+    public String[] splitBySpace(String message){
+        for(int i = 0; i < message.length(); i++){
+            if(message.charAt(i) == ' '){
+                String[] ans = new String[2];
+                ans[0] = message.substring(0, i);
+                ans[1] = message.substring(i+1);
+                return ans;
+            }
+        }
+        String[] ans = new String[1];
+        ans[0] = message;
+        return ans;
+    }
 
 
 }
