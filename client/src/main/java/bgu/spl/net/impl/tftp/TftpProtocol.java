@@ -235,10 +235,10 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public void printDirq(byte[] msg) {
-        int lastIndex=0;
+        int lastIndex=1;
         while(lastIndex < msg.length){
             int firstIndex = lastIndex;
-            while(lastIndex < msg.length && msg[lastIndex]!=0){
+            while(lastIndex < msg.length && ((short)(msg[lastIndex] & 0xff) != 0)){
                 lastIndex++;
             }
             String fileNameDirq = new String(msg, firstIndex, lastIndex-firstIndex);

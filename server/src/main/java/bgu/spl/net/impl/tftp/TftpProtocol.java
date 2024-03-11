@@ -273,7 +273,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         else{
             String allFileNames= "";
             for (String key : holder.fileMap.keySet()) {
-                allFileNames += key + '0'; //check if we need to add \0
+                allFileNames += key + '\0'; //check if we need to add \0
             } 
             fileToSend = allFileNames.getBytes();
             byte[] dataPacket = DATASend(blockNum, fileToSend, 0);
