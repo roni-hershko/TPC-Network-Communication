@@ -182,11 +182,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
-        
 		String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
+		fileNameString = fileName;
 		String folderPath = "server/Flies/";	
 		Path filePath = Paths.get(folderPath,fileName);
-		if(Files.exists(filePath)){ //didnt found the file
+		if(Files.exists(filePath)){
 			errNum = 5;
 		}
 
@@ -212,13 +212,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     private void threeDATARecive(byte[] message){ //check all write 
-        String filePath = "server/File/"+ fileNameString; 
+        String filePath = "server/File/"; //+ fileNameString; 
 		short DATAblockNum = byteToShort(message, 3,4);
 
         try {
             // Create a FileWriter object with the specified file path
             FileWriter writer = new FileWriter(filePath);
-            String dataToFile = new String(message, 5, message.length, StandardCharsets.UTF_8);
+            String dataToFile = new String(message, 5, message.length-5, StandardCharsets.UTF_8);
 
             for(int i = 0; i < dataToFile.length(); i++){
                 writer.write(dataToFile.charAt(i));
@@ -235,10 +235,11 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		// }
 
         if(message.length < packetSize){ 
-            nineSendBroadcast( fileNameString.getBytes() ,1);
+            nineSendBroadcast(fileNameString.getBytes() ,1);
 			//add the new file to the fileMap
 			File file = new File(filePath);
 			holder.fileMap.put(fileNameString, file);
+			fileNameString = null;
 			// blockNum=1;
         }
     }
@@ -314,6 +315,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void eightDELRQ(byte[] message){
         int errNum = -1;
+		String fileName = new String(message, 1,message.length-1, StandardCharsets.UTF_8);
+
         //if the user is not logged in
         if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
@@ -321,7 +324,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         //loged in
         else{
             boolean fileFound = false;
-            String fileName = new String(message, 1,message.length, StandardCharsets.UTF_8);
 
             for (String key : holder.fileMap.keySet()) {
                 if (key.equals(fileName)) {
@@ -343,7 +345,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else{
             connections.send(connectionId, ACKSend((short)0));         
-            nineSendBroadcast( fileNameString.getBytes() ,0); //check
+            nineSendBroadcast( fileName.getBytes() ,0); //check
         }
     }
 
