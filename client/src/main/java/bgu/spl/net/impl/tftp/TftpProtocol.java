@@ -66,14 +66,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 System.out.println("DATA " + blockNumFromData);
                 
                 addContentToFile(msg, blockNumFromData);
-                if(packetSizeofData < packetSize){
-                    System.out.println("Download File Complete");
-                    waitingForData = false;
-                    fileNameToDownload = "";
-                    blockNum = 0;
-                    dataToSave.clear();
-                    //indexData = 0;
-                }
+                // if(packetSizeofData < packetSize){
+                //     System.out.println("Download File Complete");
+                //     waitingForData = false;
+                //     fileNameToDownload = "";
+                //     blockNum = 0;
+                //     dataToSave.clear();
+                //     //indexData = 0;
+                // }
                 return ACKSend((short)blockNumFromData);
             }
             
@@ -280,16 +280,23 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 		for(int i = 5; i < msg.length; i++){
 			dataToSave.add(msg[i]);
 		}   
+        if(msg.length < packetSize){ 
 
-        try { 
-            byte[] fileBytes = new byte[dataToSave.size()];
-            for (int i = 0; i < dataToSave.size(); i++) {
-                fileBytes[i] = dataToSave.get(i);
+            try { 
+                byte[] fileBytes = new byte[dataToSave.size()];
+                for (int i = 0; i < dataToSave.size(); i++) {
+                    fileBytes[i] = dataToSave.get(i);
+                }
+                Files.write(filePath, fileBytes);
+                dataToSave.clear();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            Files.write(filePath, fileBytes);
-            dataToSave.clear();
-        } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Download File Complete");
+            waitingForData = false;
+            fileNameToDownload = "";
+            blockNum = 0;
+            //indexData = 0;
         }
     }
 
@@ -420,12 +427,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         return ans;
     }   
 
+   
     private byte[] shortTobyte(short a){
 		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
 	}
 	
-    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){//check
-        return (short) (((short) byteArr [fromIndex]) << 8 | (short) (byteArr [toIndex])); 
+	
+    private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
+        return (short) ((((short)(byteArr[fromIndex]) & 0XFF)) << 8 | (short)(byteArr[toIndex] & 0XFF)); 
     }
 
     public String[] splitBySpace(String message){
