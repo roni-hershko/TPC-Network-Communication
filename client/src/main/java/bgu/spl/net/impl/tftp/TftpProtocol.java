@@ -62,7 +62,22 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 System.out.println("DATA " + blockNumFromData);
                 
                 addContentToFile(msg, blockNumFromData);
+
                 if(packetSizeofData < packetSize){
+
+					// try {
+					// 	byte[] fileBytes = new byte[dataToSave.size()];
+					// 	for (int i = 0; i < dataToSave.size(); i++) {
+					// 		fileBytes[i] = dataToSave.get(i);
+					// 	}
+					// 	Files.write(filePath, fileBytes);
+					// 	dataToSave.clear();
+					// 	Holder.fileMap.put(fileNameString, new File(folderPath, fileNameString));
+					// 	nineSendBroadcast( fileNameString.getBytes() ,1); //check
+					// } catch (IOException e) {
+					// 	e.printStackTrace();
+					// }
+				
                     System.out.println("Download File Complete");
                     waitingForData = false;
                     fileNameToDownload = "";
@@ -351,7 +366,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 		dataPacket[4] = blockNumber[0];
 		dataPacket[5] = blockNumber[1];
 		for(int i = 6; i < dataPacket.length; i++){
-			dataPacket[i] = data[indexData+i-6];
+			dataPacket[i] = data[indexData+i-6]; //eror
 		}
         indexData = indexData + dataSectionSize;
         System.out.println("opcodeDATA step 2, data send len  "+dataPacket.length );
