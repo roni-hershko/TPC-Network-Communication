@@ -98,12 +98,16 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public byte[] creatRequest(String message) {
+        System.out.println("creatRequest step 1");
+
         String[] parts = message.split("\\s+", 2); // Split by first space 
 
         // Determine opcode and data
         byte opcode = 0; // Default to invalid opcode
         byte[] dataBytes = null;
         if(parts.length == 1){
+            System.out.println("creatRequest step 2 only one part");
+
             String command = parts[0];
             switch (command) {
                 case "DIRQ":
@@ -118,6 +122,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             }
         }
         else if (parts.length == 2) {
+            System.out.println("creatRequest step 2, 2 part");
             String command = parts[0];
             String data = parts[1];
             switch (command) {
@@ -162,8 +167,10 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
         
         if(opcode!=0){
+            System.out.println("creatRequest step 3 opcode");
+
             if(opcode == RRQ_OPCODE || opcode == WRQ_OPCODE || opcode == LOGRQ_OPCODE || opcode == DELRQ_OPCODE){
-                byte[] messageBytes = new byte[dataBytes.length + 2];
+                byte[] messageBytes = new byte[dataBytes.length + 3];
                 messageBytes[0] = (byte) 0;
                 messageBytes[1] = opcode;
                 for (int i = 0; i < dataBytes.length; i++) {

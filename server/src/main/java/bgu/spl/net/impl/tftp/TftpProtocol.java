@@ -128,7 +128,8 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     @Override
-    public boolean shouldTerminate() {
+    public boolean 
+    shouldTerminate() {
         if(shouldTerminate){
             this.connections.disconnect(connectionId);
             holder.logedInUserNames.remove(connectionId);
