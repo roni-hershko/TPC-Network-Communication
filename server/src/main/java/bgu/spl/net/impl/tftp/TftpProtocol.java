@@ -275,14 +275,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 //user name not valid
                 errNum = 0;
             }
-            else{
-                if(errNum == -1)
+            else if(errNum == -1){ //GP added else if
                 //add the user to the connectionsMap
-				Holder.logedInUserNames.put(connectionId, userName);
-				Holder.printMap(); //remember to remove
+                Holder.logedInUserNames.put(connectionId, userName);
+                Holder.printMap(); //remember to remove
                 //start(connectionId, connections); 
                 connections.send(connectionId, ACKSend((short)0));
-			
             } 
         }
         if(errNum != -1){
