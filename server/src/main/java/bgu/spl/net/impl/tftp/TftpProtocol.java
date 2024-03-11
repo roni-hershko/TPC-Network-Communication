@@ -212,19 +212,17 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
 
     private void threeDATARecive(byte[] message){ //check all write 
-        String filePath = "server/File/"; //+ fileNameString; 
 		short DATAblockNum = byteToShort(message, 3,4);
+		String folderPath = "server/Flies/";	
+		Path filePath = Paths.get(folderPath,fileNameString);
+		
+		byte[] data = new byte[message.length-5];
+		for(int i = 0; i < data.length; i++){
+			data[i] = message[i+5];
+		}
 
         try {
-            // Create a FileWriter object with the specified file path
-            FileWriter writer = new FileWriter(filePath);
-            String dataToFile = new String(message, 5, message.length-5, StandardCharsets.UTF_8);
-
-            for(int i = 0; i < dataToFile.length(); i++){
-                writer.write(dataToFile.charAt(i));
-            }
-            // Close the writer to release resources
-            writer.close(); //need to check 
+			Files.write(filePath, data);
         } catch (IOException e) {
         }  
 
@@ -237,7 +235,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         if(message.length < packetSize){ 
             nineSendBroadcast(fileNameString.getBytes() ,1);
 			//add the new file to the fileMap
-			File file = new File(filePath);
+			File file = new File(folderPath);
 			holder.fileMap.put(fileNameString, file);
 			fileNameString = null;
 			// blockNum=1;
