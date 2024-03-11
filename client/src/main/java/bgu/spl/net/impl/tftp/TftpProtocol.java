@@ -103,7 +103,21 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         // Determine opcode and data
         byte opcode = 0; // Default to invalid opcode
         byte[] dataBytes = null;
-        if (parts.length == 2) {
+        if(parts.length == 1){
+            String command = parts[0];
+            switch (command) {
+                case "DIRQ":
+                    opcode = DIRQ_OPCODE;
+                    waitingForDirq = true;
+                    break;
+                case "DISC":
+                    opcode = DISC_OPCODE;
+                    break;
+                default:
+                    selfError(0);
+            }
+        }
+        else if (parts.length == 2) {
             String command = parts[0];
             String data = parts[1];
             switch (command) {
@@ -130,10 +144,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                         selfError(1);
                     }
                     break;
-                case "DIRQ":
-                    opcode = DIRQ_OPCODE;
-                    waitingForDirq = true;
-                    break;
                 case "LOGRQ":
                     opcode = LOGRQ_OPCODE;
                     dataBytes = data.getBytes(StandardCharsets.UTF_8);
@@ -141,9 +151,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 case "DELRQ":
                     opcode = DELRQ_OPCODE;
                     dataBytes = data.getBytes(StandardCharsets.UTF_8);
-                    break;
-                case "DISC":
-                    opcode = DISC_OPCODE;
                     break;
 
                 default:
