@@ -114,7 +114,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         }
         else if(message0 ==9)//broadcast
         {
-            System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8));
+            System.out.println("Broadcast message LEN: "+(msg.length -2));
+            
+            short message1 = (short)(msg[1] & 0xff); 
+            if(message1== 0)
+                System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8)+" was deleted from server");
+            else
+                System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8)+" was added to server");
+
             return null;
         }
         else if(message0 == 10)//disc

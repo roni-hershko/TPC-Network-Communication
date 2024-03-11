@@ -21,7 +21,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             if (len == 0) 
                 return null;
             if(thereIsZero){
-                thereIsZero = false; 
                 byte[]resultArray= resultArray();  //cut the array to the message size
                 len=0;
                 bytes = new byte[1 << 9];
