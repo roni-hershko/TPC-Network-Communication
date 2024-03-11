@@ -11,6 +11,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.io.FileInputStream;
 import java.io.File;
@@ -39,6 +41,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     String userName;
 	short blockNum = 1;
 	byte[] fileToSend;
+	List<Byte> dataToSave = new ArrayList<>();
 	//ConcurrentHashMap<String, File> fileMap; 
 	Connections<byte[]> connections; 
 
@@ -193,13 +196,13 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         else {
 			connections.send(connectionId, ACKSend((short)0));
-			//create a file with the name of the file to upload in the files folder in the server
-			// File file = new File(folderPath,fileName);
-			// try {
-			// 	file.createNewFile();
-			// } catch (IOException e) {
-			// 	e.printStackTrace();
-			// }
+			// create a file with the name of the file to upload in the files folder in the server
+			File file = new File(folderPath,fileName);
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
 		}
 	}
 
@@ -207,31 +210,27 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void threeDATARecive(byte[] message){ //check all write 
 		short DATAblockNum = byteToShort(message, 3,4);
 		String folderPath = "server/Flies/";	
-		Path filePath = Paths.get(folderPath,fileNameString);
+		Path filePath = Paths.get(folderPath, fileNameString);
 		
-		byte[] data = new byte[message.length-5];
-		for(int i = 0; i < data.length; i++){
-			data[i] = message[i+5];
-		}
-
-        try {
-			Files.write(filePath, data);
-        } catch (IOException e) {
-        }  
+		for(int i = 5; i < message.length; i++){
+			dataToSave.add(message[i]);
+		}        
 
 		connections.send(connectionId, ACKSend(DATAblockNum));
 
         if(message.length < packetSize){ 
-            nineSendBroadcast(fileNameString.getBytes() ,1);
-
-			try{
-				File file = new File(folderPath,fileNameString);
-				file.createNewFile();
-				holder.fileMap.put(fileNameString, file);
-			} catch (Exception e) {
+			try {
+				byte[] fileBytes = new byte[dataToSave.size()];
+				for (int i = 0; i < dataToSave.size(); i++) {
+					fileBytes[i] = dataToSave.get(i);
+				}
+				Files.write(filePath, fileBytes);
+				dataToSave.clear();
+				holder.fileMap.put(fileNameString, new File(folderPath, fileNameString));
+				nineSendBroadcast( fileNameString.getBytes() ,1); //check
+			} catch (IOException e) {
 				e.printStackTrace();
 			}
-			fileNameString = null;
         }
     }
 
@@ -257,7 +256,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     }
 
 
-    private void sixDIRQ(byte[] message){ //check
+    private void sixDIRQ(byte[] message){ 
 		//if the user is not logged in
         if(!holder.logedInUserNames.containsKey(connectionId)){
             ERRORSend(6);
@@ -307,7 +306,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     private void eightDELRQ(byte[] message){
         int errNum = -1;
 		String fileName = new String(message, 1,message.length-1, StandardCharsets.UTF_8);
-
+		fileNameString = fileName;
         //if the user is not logged in
         if(!holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
