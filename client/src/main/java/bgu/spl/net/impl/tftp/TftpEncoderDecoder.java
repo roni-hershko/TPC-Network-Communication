@@ -4,57 +4,51 @@ import bgu.spl.net.api.MessageEncoderDecoder;
 
 public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     
-    private byte[] bytes = new byte[1 << 9]; //start with 512
+    private byte[] bytes = new byte[1 << 10]; //start with 512
     private int len = 0;
     private final int packetSize = 512;
     private int stopValue = packetSize;
     boolean thereIsZero = false;
 
-    //big endian lowest to highest
-    //get from the  cilent packet with size 512
-    //use get input stream read
+
     @Override
     public byte[] decodeNextByte(byte nextByte) {
         Byte nextByteB = nextByte;
-        short nextByteShort = nextByteB.shortValue();  
-        if(nextByteShort == 0){
+
+        if(nextByteB == 0){
             if (len == 0) 
                 return null;
             if(thereIsZero){
                 byte[]resultArray= resultArray();  //cut the array to the message size
-                len=0;
-                bytes = new byte[1 << 9];
-                stopValue = packetSize;
-                thereIsZero = false;
+                resetAllFields();
                 return resultArray;  
             }
         }
 
         bytes[len] = nextByte;
         len++;
+		Byte opcode = bytes[0];
 
-        short bytes0 = (short)(bytes[0] & 0xff);
-        if(len == 1 && (bytes0 == 9 || bytes0 == 5)) //case brodcast or error
+		//case brodcast or error
+        if((len == 1 && opcode == 9) || (len == 2 && opcode == 5)) 
         {
             thereIsZero = true;
         }
 
-        else if(bytes0 == 4 ) //case ack
+		//case ack
+        else if(opcode == 4 ) 
         {
-            stopValue = 4;  
+            stopValue = 3;  
         }
-        else if(bytes0 == 3 && len==4) //case data
+		//case data
+        else if(opcode == 3 && len==4) 
         {
-            //as the packet size
             stopValue = byteToShort(bytes, 1, 2) + 5;
         }
 
         if(len == stopValue){
-            byte[]resultArray= resultArray();  //cut the array to the message size
-            len=0;
-            bytes = new byte[1 << 9];
-            stopValue = packetSize;
-            thereIsZero = false;
+            byte[]resultArray = resultArray(); 
+            resetAllFields();
             return resultArray;
         }
         else
@@ -72,6 +66,13 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 			result[i] = bytes[i];
 		}
 		return result;
+	}
+
+	public void resetAllFields(){
+		bytes = new byte[1 << 10]; 
+		len = 0;
+		stopValue = packetSize;
+		thereIsZero = false;
 	}
 
     private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){

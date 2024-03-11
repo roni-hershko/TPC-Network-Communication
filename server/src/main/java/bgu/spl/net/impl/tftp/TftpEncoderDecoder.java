@@ -15,7 +15,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     public byte[] decodeNextByte(byte nextByte) {
         Byte nextByteB = nextByte;
 
-        if(nextByteB== 0){
+        if(nextByteB == 0){
             if (len == 0) 
                 return null;
             if(thereIsZero){
@@ -46,7 +46,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 		}
 
         if(len == stopValue){
-			byte[]resultArray= resultArray();  //cut the array to the message size
+			byte[]resultArray = resultArray();  //cut the array to the message size
 			resetAllFields();
 			return resultArray; 
 		}

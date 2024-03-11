@@ -118,9 +118,9 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             
             short message1 = (short)(msg[1] & 0xff); 
             if(message1== 0)
-                System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8)+" was deleted from server");
+                System.out.println("BCAST: del " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8));
             else
-                System.out.println("Broadcast message: " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8)+" was added to server");
+                System.out.println("BCAST: add " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8));
 
             return null;
         }
@@ -134,7 +134,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public byte[] creatRequest(String message) {
-        System.out.println("creatRequest step 1");
 
         String[] parts = splitBySpace(message);
 
@@ -143,8 +142,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         byte opcode = 0; // Default to invalid opcode
         byte[] dataBytes = null;
         if(parts.length == 1){
-
-            System.out.println("creatRequest step 2 only one part");
 
             String command = parts[0];
             switch (command) {
@@ -160,7 +157,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             }
         }
         else if (parts.length == 2) {
-            System.out.println("creatRequest step 2, 2 part");
             String command = parts[0];
             String data = parts[1];
             switch (command) {
@@ -205,10 +201,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
         
         if(opcode!=0){
-            System.out.println("creatRequest step 3 opcode");
 
             if(opcode == RRQ_OPCODE || opcode == WRQ_OPCODE || opcode == LOGRQ_OPCODE || opcode == DELRQ_OPCODE){
-                System.out.println("creatRequest step 4 opcode");
 
                 byte[] messageBytes = new byte[dataBytes.length + 3];
                 messageBytes[0] = (byte) 0;
@@ -237,8 +231,9 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
    
     public void ERROR(byte[] msg) {
-        String errorMsg = new String(msg, 3, msg.length-3, StandardCharsets.UTF_8);
-        System.out.println("Error: " + errorMsg);
+        String errorMsg = new String(msg, 3, msg.length-1-3, StandardCharsets.UTF_8);
+		String errorNumStr = String.valueOf(msg[2]);
+        System.out.println("Error: "  + errorNumStr + " " + errorMsg);
     }
 
     public void printDirq(byte[] msg) {
@@ -303,6 +298,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 if(dataPacket.length <= packetSize + 5){
                     waitingForUpload = false;
                     blockNum = 1;
+                    System.out.println("WRQ "+fileNameToUpload+" complete"); //ADDED BY GP
                     fileNameToUpload = "";
                 }
                 return dataPacket;
@@ -369,13 +365,13 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     
     private void selfError(int errNum){
         String err0= "Not defined, see error message (if any).";
-        String err1= "File not found -RRQ, DELRQ of non existing file";
+        String err1= "File does not exist.";
         String err2= "Access violation.";
         String err3= "Disk full or allocation exceeded.";
         String err4= "Illegal TFTP operation.";
-        String err5= "File already exists- file name exists for WRQ.";
-        String err6= "User not logged in -any opcode received before Login completes.";
-        String err7= "User already logged in -Login username already connected.";
+        String err5= "File already exists";
+        String err6= "User not logged in ";
+        String err7= "User already logged in ";
         if(errNum == 0)
             System.out.println("Error: " + err0);
         else if(errNum == 1)
