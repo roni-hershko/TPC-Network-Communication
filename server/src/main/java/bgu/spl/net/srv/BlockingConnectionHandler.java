@@ -8,6 +8,7 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
+import bgu.spl.net.impl.tftp.Holder;
 import bgu.spl.net.impl.tftp.TftpEncoderDecoder;
 import bgu.spl.net.impl.tftp.TftpProtocol;
 
@@ -50,7 +51,8 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             }
 
         } catch (IOException ex) {
-            ex.printStackTrace();
+            this.connections_list.disconnect(connection_id);
+			Holder.logedInUserNames.remove(connection_id);
         }
     }
 

@@ -14,21 +14,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-import java.io.FileInputStream;
 import java.io.File;
-import bgu.spl.net.srv.ConnectionHandler;
-
-class holder{
-	static ConcurrentHashMap<Integer, String> logedInUserNames = new ConcurrentHashMap<>(); 
-	static ConcurrentHashMap<String, File> fileMap = new ConcurrentHashMap<>(); 
 
 
-	static void printMap(){
-		for (ConcurrentHashMap.Entry<Integer, String> entry : logedInUserNames.entrySet()) {
-			System.out.println("Key = " + entry.getKey() + ", Value = " + entry.getValue());
-		}
-	}
-}
 
 
 public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
@@ -60,7 +48,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 				}
             }
         
-        holder.fileMap = filesMap; 
+        Holder.fileMap = filesMap; 
     }
 	
 
@@ -135,7 +123,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
     shouldTerminate() {
         if(shouldTerminate){
             this.connections.disconnect(connectionId);
-            holder.logedInUserNames.remove(connectionId);
+            Holder.logedInUserNames.remove(connectionId);
         }
         return shouldTerminate;
     }
@@ -146,7 +134,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         boolean fileFound = false;
         
         //if the user is not logged in
-        if(!holder.logedInUserNames.containsKey(connectionId)){
+        if(!Holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
         
@@ -180,7 +168,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         int errNum = -1;
 
         //if the user is not logged in
-        if(!holder.logedInUserNames.containsKey(connectionId)){
+        if(!Holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
 		String fileName = new String(message, 1, message.length -1, StandardCharsets.UTF_8);
@@ -226,7 +214,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 				}
 				Files.write(filePath, fileBytes);
 				dataToSave.clear();
-				holder.fileMap.put(fileNameString, new File(folderPath, fileNameString));
+				Holder.fileMap.put(fileNameString, new File(folderPath, fileNameString));
 				nineSendBroadcast( fileNameString.getBytes() ,1); //check
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -258,12 +246,12 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void sixDIRQ(byte[] message){ 
 		//if the user is not logged in
-        if(!holder.logedInUserNames.containsKey(connectionId)){
+        if(!Holder.logedInUserNames.containsKey(connectionId)){
             ERRORSend(6);
         }
         else{
             String allFileNames= "";
-            for (String key : holder.fileMap.keySet()) {
+            for (String key : Holder.fileMap.keySet()) {
                 allFileNames += key + '\0'; //check if we need to add \0
             } 
             fileToSend = allFileNames.getBytes();
@@ -278,20 +266,20 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         int errNum = -1;
         userName = new String(message, 1, message.length-1, StandardCharsets.UTF_8);
         //if the user is already logged in
-        if(holder.logedInUserNames.containsKey(connectionId)){ 
+        if(Holder.logedInUserNames.containsKey(connectionId)){ 
             errNum = 7;
         }
         else{
             //if the user name is taken
-            if(holder.logedInUserNames.containsValue(userName)){
+            if(Holder.logedInUserNames.containsValue(userName)){
                 //user name not valid
                 errNum = 0;
             }
             else{
                 if(errNum == -1)
                 //add the user to the connectionsMap
-				holder.logedInUserNames.put(connectionId, userName);
-				holder.printMap(); //remember to remove
+				Holder.logedInUserNames.put(connectionId, userName);
+				Holder.printMap(); //remember to remove
                 //start(connectionId, connections); 
                 connections.send(connectionId, ACKSend((short)0));
 			
@@ -308,16 +296,16 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		String fileName = new String(message, 1,message.length-1, StandardCharsets.UTF_8);
 		fileNameString = fileName;
         //if the user is not logged in
-        if(!holder.logedInUserNames.containsKey(connectionId)){
+        if(!Holder.logedInUserNames.containsKey(connectionId)){
             errNum = 6;
         }
         //loged in
         else{
             boolean fileFound = false;
 
-            for (String key : holder.fileMap.keySet()) {
+            for (String key : Holder.fileMap.keySet()) {
                 if (key.equals(fileName)) {
-                    holder.fileMap.remove(key);
+                    Holder.fileMap.remove(key);
                     fileFound = true;
 					//delete the file from the server
 					File file = new File("server/Flies/"+fileName);
@@ -342,7 +330,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 
     private void tenDISC(byte[] message){
 		//if the user is not logged in
-        if(!holder.logedInUserNames.containsKey(connectionId)){
+        if(!Holder.logedInUserNames.containsKey(connectionId)){
             connections.send(connectionId,ERRORSend(6));
         }
         else{
@@ -363,7 +351,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         }
         announce[announce.length-1] = 0;
 
-        for(int i = 0; i < holder.logedInUserNames.size(); i++){
+        for(int i = 0; i < Holder.logedInUserNames.size(); i++){
                 connections.send(i, announce);
         }
     }
