@@ -18,13 +18,19 @@ import java.net.Socket;
 			try (Socket sock = new Socket(args[0], 7777);
 					BufferedInputStream in = new BufferedInputStream(sock.getInputStream());
 					BufferedOutputStream out = new BufferedOutputStream(sock.getOutputStream())){
+						System.out.println("socket created");
+
 			BlockingConnectionHandlerClient handler = new BlockingConnectionHandlerClient(sock, new TftpEncoderDecoder(), new TftpProtocol(), in, out);
 			Thread handlThread = new Thread(handler);
 			handlThread.start();
+			System.out.println("handlThread created");
+
 			
 			KeyBoardConnectionHandler keyboardHandler = new KeyBoardConnectionHandler(handler, out, new BufferedReader(new java.io.InputStreamReader(System.in)));		
 			Thread keyboardThread = new Thread(keyboardHandler);
 			keyboardThread.start();
+			System.out.println("keyboardThread created");
+
 
 			try{
 				handlThread.join();
