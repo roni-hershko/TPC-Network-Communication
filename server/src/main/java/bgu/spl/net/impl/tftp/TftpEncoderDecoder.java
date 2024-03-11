@@ -4,7 +4,7 @@ import bgu.spl.net.api.MessageEncoderDecoder;
 
 public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     
-    private byte[] bytes = new byte[1 << 9]; //start with 512
+    private byte[] bytes = new byte[1 << 10]; //start with 512
     private int len = 0;
     private final int packetSize = 512;
     private int stopValue = packetSize;
@@ -19,10 +19,8 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             if (len == 0) 
                 return null;
             if(thereIsZero){
-                thereIsZero = false;
 				byte[]resultArray= resultArray();  //cut the array to the message size
-				len=0;
-				bytes = new byte[1 << 9];
+				resetAllFields();
                 return resultArray; 
             }    
         }
@@ -49,8 +47,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 
         if(len == stopValue){
 			byte[]resultArray= resultArray();  //cut the array to the message size
-			len=0;
-			bytes = new byte[1 << 9];
+			resetAllFields();
 			return resultArray; 
 		}
     	else{
@@ -72,6 +69,13 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 			result[i] = bytes[i];
 		}
 		return result;
+	}
+	
+	public void resetAllFields(){
+		bytes = new byte[1 << 10]; 
+		len = 0;
+		stopValue = packetSize;
+		thereIsZero = false;
 	}
 
 	private byte[] shortTobyte(short a){

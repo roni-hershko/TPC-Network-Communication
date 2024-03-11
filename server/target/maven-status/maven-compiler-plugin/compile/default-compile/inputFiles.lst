@@ -1,25 +1,25 @@
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\rci\Command.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\echo\LineMessageEncoderDecoder.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\tftp\ConnectionsImpl.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\srv\BlockingConnectionHandler.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\newsfeed\FetchNewsCommand.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\api\MessagingProtocol.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeedServerMain.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\rci\ObjectEncoderDecoder.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\srv\ConnectionHandler.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\api\BidiMessagingProtocol.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\srv\BaseServer.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\echo\EchoProtocol.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\tftp\TftpServer.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\echo\EchoClient.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\srv\Connections.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeedClientMain.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\srv\Server.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\newsfeed\PublishNewsCommand.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\tftp\TftpProtocol.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\tftp\TftpEncoderDecoder.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeed.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\rci\RCIClient.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\rci\RemoteCommandInvocationProtocol.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\api\MessageEncoderDecoder.java
-C:\Users\galus\OneDrive\Documents\semester3\spl\tasks\task 3\assignment-3-1\server\src\main\java\bgu\spl\net\impl\echo\EchoServer.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\srv\BlockingConnectionHandler.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\srv\ConnectionHandler.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\rci\RCIClient.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\tftp\TftpEncoderDecoder.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeedServerMain.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\echo\EchoServer.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\api\MessageEncoderDecoder.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeed.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\srv\Connections.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\echo\EchoProtocol.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\rci\ObjectEncoderDecoder.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\newsfeed\PublishNewsCommand.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\srv\BaseServer.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\newsfeed\NewsFeedClientMain.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\echo\LineMessageEncoderDecoder.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\rci\RemoteCommandInvocationProtocol.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\tftp\ConnectionsImpl.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\tftp\TftpProtocol.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\srv\Server.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\tftp\TftpServer.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\api\BidiMessagingProtocol.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\api\MessagingProtocol.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\echo\EchoClient.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\newsfeed\FetchNewsCommand.java
+C:\Users\AvramH\Desktop\roni_spl\ass3\assignment-3\server\src\main\java\bgu\spl\net\impl\rci\Command.java
