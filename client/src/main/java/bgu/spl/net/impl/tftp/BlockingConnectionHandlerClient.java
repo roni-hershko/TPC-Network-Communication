@@ -37,13 +37,9 @@ public class BlockingConnectionHandlerClient implements Runnable {
                 if (ansFromServer != null) {
                     if(protocol.waitingForUpload || protocol.waitingForData || protocol.waitingForDirq){
                         send(protocol.process(ansFromServer));
-                        System.out.println("waitingForUpload supposeD senT data" );
-
                     }
                     else{
                         protocol.process(ansFromServer);
-                        System.out.println("ans from server not null");
-
                     }
                 }
             }

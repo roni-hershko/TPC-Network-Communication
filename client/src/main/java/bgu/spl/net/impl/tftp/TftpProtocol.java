@@ -17,9 +17,8 @@ import java.util.Map;
 
 public class TftpProtocol implements MessagingProtocol<byte[]>{
 
-    private static final byte RRQ_OPCODE = 1; ///do cast to byte
+    private static final byte RRQ_OPCODE = 1; 
     private static final byte WRQ_OPCODE = 2;
-    private static final byte DATA_OPCODE = 3;
     private static final byte DIRQ_OPCODE = 6;
     private static final byte LOGRQ_OPCODE = 7;
     private static final byte DELRQ_OPCODE = 8;
@@ -34,7 +33,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     private String fileNameToUpload = "";
     private String fileNameToDownload = "";
     private int blockNum = 1;
-    //private int indexData = 0;
     private byte[] dirqData = new byte[0];
     byte[] fileToSend;
     List<Byte> dataToSave = new ArrayList<>();
@@ -63,18 +61,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             else
             {
                 int blockNumFromData = byteToShort(msg, 3, 4);
-                System.out.println("DATA " + blockNumFromData);
-                System.out.println("MSG LEN " + msg.length);
-
                 addContentToFile(msg, blockNumFromData);
-                // if(packetSizeofData < packetSize){
-                //     System.out.println("Download File Complete");
-                //     waitingForData = false;
-                //     fileNameToDownload = "";
-                //     blockNum = 0;
-                //     dataToSave.clear();
-                //     //indexData = 0;
-                // }
                 return ACKSend((short)blockNumFromData);
             }
             
@@ -85,14 +72,12 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             System.out.println("ACK " + ackNum);
             blockNum = ackNum+1;
             if(waitingForUpload){
-                System.out.println("BEFORE SEND FILE ");
                 return sendFile(blockNum, packetSize*(ackNum));
             }
             else{
                 waitingForUpload = false;
                 blockNum = 1;
                 fileNameToUpload = "";
-                //indexData = 0;
                 fileToSend = new byte[0];
             }
             return null;
@@ -105,7 +90,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
                 file.delete();
             }
             waitingForUpload = false;
-            //indexData = 0;
             blockNum = 0;
             if(waitingForData){
                 File file = new File("client/"+fileNameToDownload);
@@ -119,9 +103,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             return null;
         }
         else if(message0 ==9)//broadcast
-        {
-            System.out.println("Broadcast message LEN: "+(msg.length -2));
-            
+        {            
             short message1 = (short)(msg[1] & 0xff); 
             if(message1== 0)
                 System.out.println("BCAST: del " + new String(msg, 2, msg.length-2, StandardCharsets.UTF_8));
@@ -243,7 +225,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public void printDirq(byte[] msg) {
-        int lastIndex=1;
+        int lastIndex=5;
         while(lastIndex < msg.length){
             int firstIndex = lastIndex;
             while(lastIndex < msg.length && ((short)(msg[lastIndex] & 0xff) != 0)){
@@ -263,7 +245,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         try {
             // Create the file
             if (file.createNewFile()) {
-                System.out.println("File created successfully.");
             } else {
                 selfError(0);
             }
@@ -274,7 +255,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 
     public void addContentToFile(byte[] msg, int blockNum) {
 
-        System.out.println("DATA block number: " + blockNum + " file name: " + fileNameToDownload);
 		String folderPath = "client/";	
 		Path filePath = Paths.get(folderPath,fileNameToDownload);
 		
@@ -282,7 +262,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 			dataToSave.add(msg[i]);
 		}  
         
-        System.out.println("msg.length: " + msg.length + " packetSize: " + packetSize);
         if(msg.length < packetSize){ 
             try { 
                 byte[] fileBytes = new byte[dataToSave.size()];
@@ -294,7 +273,7 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("Download File Complete");
+            System.out.println("RRQ " + fileNameToDownload + " Complete");
             waitingForData = false;
             fileNameToDownload = "";
             blockNum = 0;
@@ -302,21 +281,17 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
     }
 
     public byte[] sendFile(int blockNum, int indexData){
-        System.out.println("send file step 1: BLOCK NUM: "+blockNum+ " index data: "+indexData );
         String folderPath = "client";	
         Path filePath = Paths.get(folderPath,fileNameToUpload);
-        if(Files.exists(filePath)){//PROBLEM
+        if(Files.exists(filePath)){
             try {
-                System.out.println("send file step 2 " );
-
                 fileToSend = Files.readAllBytes(filePath);
                 byte[] dataPacket = opcodeDATA(blockNum, fileToSend, indexData); 
-                System.out.println("BLOCK NUM "+blockNum+ " ||file to send len "+fileToSend.length + " ||dataPacket len "+dataPacket.length);
                
                 if(dataPacket.length <= packetSize + 5){
                     waitingForUpload = false;
                     blockNum = 1;
-                    System.out.println("WRQ "+fileNameToUpload+" complete"); //ADDED BY GP
+                    System.out.println("WRQ "+fileNameToUpload+" complete"); 
                     fileNameToUpload = "";
                 }
                 return dataPacket;
@@ -324,38 +299,14 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            System.out.println("send file step 4 " );
         }
-        
         else{
             selfError(1);
         }
         return null;
-
-
-        // byte[] dataPacket = null;
-        // try {
-        //     FileInputStream fileInputStream = new FileInputStream(myFiles.get(fileName));
-        //     byte[] fileBytes = fileInputStream.readAllBytes();
-        //     dataPacket = opcodeDATA(blockNum, fileBytes,indexData);  
-
-        //     if(fileBytes.length > packetSize*blockNum){//there is still file to send
-        //         blockNum++;
-        //     }
-        //     else{//end of file
-        //         waitingForUpload = false;
-        //         blockNum = 0;
-        //         fileName = "";
-        //     }
-        //     fileInputStream.close();
-        // } catch (IOException e) {
-        //     e.printStackTrace();
-        // }
-        // return dataPacket;
     }
     
     private byte[] opcodeDATA(int blockNum, byte[] data , int indexData){
-        System.out.println("opcodeDATA step 1 " );
 
         //create data packet in the size of the packet remain to send
         int dataSectionSize = Math.min(packetSize, data.length - indexData);
@@ -372,7 +323,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 			dataPacket[i] = data[indexData+i-6];
 		}
         indexData = indexData + dataSectionSize;
-        System.out.println("opcodeDATA step 2, data send len  "+dataPacket.length );
 		return dataPacket;
     } 
         

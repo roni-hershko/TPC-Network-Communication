@@ -82,11 +82,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
             //ACK
             fourACKRecive(message);        
         }
-        else if(message0 == 5)
-        {
-            //ERROR
-            fiveERRORRecive(message);
-        }
         else if(message0 == 6)
         {
             //DIRQ
@@ -192,7 +187,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 	}
 
 
-    private void threeDATARecive(byte[] message){ //check all write 
+    private void threeDATARecive(byte[] message){ 
 		short DATAblockNum = byteToShort(message, 3,4);
 		String folderPath = "server/Flies/";	
 		Path filePath = Paths.get(folderPath, fileNameString);
@@ -225,7 +220,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		blockNum++;
 		//if there is more data packets to send
 		if(fileToSend.length > packetSize*ACKblockNum){
-			byte[] dataPacket = DATASend(blockNum, fileToSend, packetSize*(blockNum-1));// check if the index is correct
+			byte[] dataPacket = DATASend(blockNum, fileToSend, packetSize*(blockNum-1));
 			connections.send(connectionId, dataPacket);
 		}
 		//if the file has been sent
@@ -233,11 +228,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 			blockNum = 1;
 			fileToSend = null;
 		}
-    }
-
-
-    private void fiveERRORRecive(byte[] message){
-        //TO DO
     }
 
 
@@ -249,7 +239,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
         else{
             String allFileNames= "";
             for (String key : Holder.fileMap.keySet()) {
-                allFileNames += key + '\0'; //check if we need to add \0
+                allFileNames += key + '\0'; 
             } 
             fileToSend = allFileNames.getBytes();
             byte[] dataPacket = DATASend(blockNum, fileToSend, 0);
@@ -272,10 +262,9 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
                 //user name not valid
                 errNum = 0;
             }
-            else if(errNum == -1){ //GP added else if
+            else if(errNum == -1){ 
                 //add the user to the connectionsMap
                 Holder.logedInUserNames.put(connectionId, userName);
-                Holder.printMap(); //remember to remove
                 //start(connectionId, connections); 
                 connections.send(connectionId, ACKSend((short)0));
             } 
@@ -463,7 +452,6 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		for(int i = 6; i < dataPacket.length; i++){
 			dataPacket[i] = data[indexData+i-6];
 		}
-        System.out.println("dataPacket len : " + dataPacket.length);
 		return dataPacket;
     }
 

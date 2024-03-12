@@ -44,7 +44,6 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
         else if(opcode == 3 && len==3) 
         {
             stopValue = byteToShort(bytes, 1, 2) + 5;
-            System.out.println("stopValue: " + stopValue);
         }
 
         if(len == stopValue){
