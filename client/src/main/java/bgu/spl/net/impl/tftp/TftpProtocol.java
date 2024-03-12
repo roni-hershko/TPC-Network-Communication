@@ -64,7 +64,8 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             {
                 int blockNumFromData = byteToShort(msg, 3, 4);
                 System.out.println("DATA " + blockNumFromData);
-                
+                System.out.println("MSG LEN " + msg.length);
+
                 addContentToFile(msg, blockNumFromData);
                 // if(packetSizeofData < packetSize){
                 //     System.out.println("Download File Complete");
@@ -279,9 +280,10 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
 		
 		for(int i = 5; i < msg.length; i++){
 			dataToSave.add(msg[i]);
-		}   
+		}  
+        
+        System.out.println("msg.length: " + msg.length + " packetSize: " + packetSize);
         if(msg.length < packetSize){ 
-
             try { 
                 byte[] fileBytes = new byte[dataToSave.size()];
                 for (int i = 0; i < dataToSave.size(); i++) {
