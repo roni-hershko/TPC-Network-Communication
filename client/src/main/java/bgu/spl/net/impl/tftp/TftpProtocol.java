@@ -427,11 +427,9 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         return ans;
     }   
 
-   
     private byte[] shortTobyte(short a){
 		return new byte []{(byte)(a >> 8) , (byte)(a & 0xff)};
 	}
-	
 	
     private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
         return (short) ((((short)(byteArr[fromIndex]) & 0XFF)) << 8 | (short)(byteArr[toIndex] & 0XFF)); 
@@ -450,7 +448,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
         ans[0] = message;
         return ans;
     }
-
 
 }
 
