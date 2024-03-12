@@ -41,9 +41,10 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
             stopValue = 3;  
         }
 		//case data
-        else if(opcode == 3 && len==4) 
+        else if(opcode == 3 && len==3) 
         {
             stopValue = byteToShort(bytes, 1, 2) + 5;
+            System.out.println("stopValue: " + stopValue);
         }
 
         if(len == stopValue){
@@ -78,4 +79,5 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
     private short byteToShort(byte[] byteArr, int fromIndex, int toIndex){
         return (short) ((((short)(byteArr[fromIndex]) & 0XFF)) << 8 | (short)(byteArr[toIndex] & 0XFF)); 
     }
+
 }
