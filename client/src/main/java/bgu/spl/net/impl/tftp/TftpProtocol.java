@@ -296,7 +296,6 @@ public class TftpProtocol implements MessagingProtocol<byte[]>{
             waitingForData = false;
             fileNameToDownload = "";
             blockNum = 0;
-            //indexData = 0;
         }
     }
 
