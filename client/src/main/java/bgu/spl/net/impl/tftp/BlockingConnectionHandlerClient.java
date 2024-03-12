@@ -35,13 +35,15 @@ public class BlockingConnectionHandlerClient implements Runnable {
             while (!protocol.shouldTerminate() && (read = in.read()) >= 0) {
                 byte[] ansFromServer = encdec.decodeNextByte((byte) read);
                 if (ansFromServer != null) {
-                    if(protocol.waitingForUpload){
+                    if(protocol.waitingForUpload || protocol.waitingForData || protocol.waitingForDirq){
                         send(protocol.process(ansFromServer));
                         System.out.println("waitingForUpload supposeD senT data" );
 
                     }
                     else{
                         protocol.process(ansFromServer);
+                        System.out.println("ans from server not null");
+
                     }
                 }
             }

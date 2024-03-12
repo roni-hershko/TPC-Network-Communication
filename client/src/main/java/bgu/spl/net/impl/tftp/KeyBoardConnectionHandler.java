@@ -27,6 +27,7 @@ public class KeyBoardConnectionHandler implements Runnable {
     public void run() {
         try {
             while (!protocol.shouldTerminate()){
+                System.out.println("keyboard loop");
                 String line = keyboard.readLine();	
                 byte[] lineToByte = protocol.creatRequest(line);
                 if(lineToByte != null){ //if the request is valid
