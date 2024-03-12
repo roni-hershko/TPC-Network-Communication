@@ -30,7 +30,7 @@ public class TftpEncoderDecoder implements MessageEncoderDecoder<byte[]> {
 		Byte opcode = bytes[0];
 
 		//case brodcast or error
-        if((len == 1 && opcode == 9) || (len == 2 && opcode == 5)) 
+        if((len == 2 && opcode == 9) || (len == 2 && opcode == 5)) 
         {
             thereIsZero = true;
         }
