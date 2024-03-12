@@ -463,6 +463,7 @@ public class TftpProtocol implements BidiMessagingProtocol<byte[]>  {
 		for(int i = 6; i < dataPacket.length; i++){
 			dataPacket[i] = data[indexData+i-6];
 		}
+        System.out.println("dataPacket len : " + dataPacket.length);
 		return dataPacket;
     }
 
